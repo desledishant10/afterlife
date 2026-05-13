@@ -57,7 +57,7 @@ and consider migrating to short-lived credentials (IAM Roles Anywhere, OIDC).
 ## NEVER-USED
 
 **Severity:** Medium
-**Status:** Planned (Week 6)
+**Status:** Implemented
 
 Credential has a `created_at` older than `never_used_grace_days` (default 30) but
 no `last_used_at` value at all. Created and never touched.
@@ -67,20 +67,44 @@ moment that was forgotten. These credentials have no associated baseline behavio
 which makes anomaly detection on them impossible. Often the easiest wins in an
 audit.
 
+**False positives:**
+- Break-glass credentials intentionally provisioned dormant for use during
+  incidents. Mitigation: tag-based allowlist read from credential metadata
+  (planned).
+- Newly-created credentials where the consumer hasn't been deployed yet.
+  Mitigation: the grace period handles the common case; per-credential overrides
+  are planned.
+
+**Remediation:** Confirm whether the credential was created for a use case that
+ever materialized. If not, revoke. If it's a deliberate dormant credential, tag
+it so future scans skip it.
+
 ---
 
 ## UNROTATED-KEY
 
 **Severity:** Medium
-**Status:** Planned (Week 6)
+**Status:** Implemented
 
-AWS access key on a human user with `created_at` older than 180 days and no
-rotation. Long-lived keys on humans violate the AWS Well-Architected security
-pillar.
+Active AWS access key with `created_at` older than `unrotated_key_days`
+(default 180). For an access key, `created_at` is effectively the last rotation
+timestamp — AWS doesn't rotate keys in place; you create a new key and delete
+the old.
 
 **Why it matters:** Long-lived static credentials are the highest-EV target for
-attackers because (a) their value persists and (b) their compromise is often only
-detected by usage anomalies, not key age.
+attackers because (a) their value persists indefinitely and (b) compromise is
+often only detected by usage anomalies, not key age. AWS Well-Architected
+guidance calls for rotating access keys at least every 90 days for human users.
+
+**False positives:**
+- Programmatic service accounts that legitimately need static credentials and
+  cannot use IAM Roles Anywhere or OIDC. Mitigation: tag-based allowlist
+  (planned).
+- v0.1 fires for both human and service-account IAM users without distinction.
+  Distinguishing them reliably requires IdP correlation (Week 5).
+
+**Remediation:** Rotate the access key (create new, update consumers, verify,
+delete old). Long-term, migrate the workload to short-lived credentials.
 
 ---
 
