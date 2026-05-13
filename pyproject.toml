@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "afterlife"
 version = "0.1.0"
-description = "Surface credentials that outlive their owners — a ghost-access auditor."
+description = "Surface credentials that outlive their owners: a ghost-access auditor."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

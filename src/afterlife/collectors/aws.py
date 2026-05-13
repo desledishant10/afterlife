@@ -15,7 +15,7 @@ class AWSCollector(Collector):
 
     Users become Identity rows with `source="aws"` and the user ARN as id.
     Access keys become Credential rows owned by the IAM user (`owner_source="aws"`).
-    Roles become ownerless Credential rows of type `aws_iam_role` — the trust policy
+    Roles become ownerless Credential rows of type `aws_iam_role`; the trust policy
     governs who can assume them, so there is no single owner to record.
 
     Cross-source ownership (linking an AWS user to its Okta identity) is built later

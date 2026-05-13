@@ -34,13 +34,13 @@ make demo
 
 | Resource | Notes |
 |----------|-------|
-| member `alice` | email `alice@example.com` — links to AWS + Google alice |
-| member `bob123` | private email — won't link (single-source) |
-| member `dave-engineer` | email `dave@example.com` — links to AWS + Google dave |
+| member `alice` | email `alice@example.com`, links to AWS + Google alice |
+| member `bob123` | private email, won't link (single-source) |
+| member `dave-engineer` | email `dave@example.com`, links to AWS + Google dave |
 | outside collaborator `contractor-jane` | external vendor, GitHub only |
 | installation `dependabot` | App with three permissions |
-| `test-org/main-app` deploy key `ci-deploy` | fresh — no findings |
-| `test-org/main-app` deploy key `legacy-deploy` | 300d old, last used 120d ago — fires `UNUSED-CREDENTIAL` |
+| `test-org/main-app` deploy key `ci-deploy` | fresh, no findings |
+| `test-org/main-app` deploy key `legacy-deploy` | 300d old, last used 120d ago, fires `UNUSED-CREDENTIAL` |
 
 ### Google Workspace
 
@@ -59,7 +59,7 @@ make demo
 both `bob` and `carol`'s AWS keys because the cross-source identity graph
 links the AWS identity to a suspended/archived Workspace identity by email.
 
-8 persons in the identity graph — 5 cross-source (alice, bob, carol, dave, eve)
+8 persons in the identity graph, 5 cross-source (alice, bob, carol, dave, eve)
 and 3 single-source (jane outside collab, nina Google-only, bob123 with no
 email).
 
@@ -71,13 +71,13 @@ demo:
 
 - **AWS `CreateDate`** is controlled by wrapping `iam.create_user` /
   `iam.create_role` / `iam.create_access_key` in `freezegun.freeze_time(...)`
-  — moto reads the (frozen) wall clock when stamping resources.
+  Moto reads the (frozen) wall clock when stamping resources.
 - **AWS `LastUsedDate`** cannot be set via the API or freezegun, so the demo
   reaches into moto's in-process `iam_backends` and assigns an
   `AccessKeyLastUsed` object directly. Fragile to moto internals; the demo
   script is the only consumer.
 - **GitHub and Google timestamps** are set in the mocked JSON responses
-  directly — respx serves whatever we return.
+  directly, respx serves whatever we return.
 - **Google auth** is bypassed in the demo by passing `access_token="demo-token"`
   to the collector, which short-circuits the JWT signing + token exchange.
   The production code path (signed RS256 JWT exchanged at
