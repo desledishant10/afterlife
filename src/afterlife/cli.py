@@ -52,12 +52,26 @@ def scan_github(
 @scan_app.command("idp")
 def scan_idp(
     provider: str = typer.Option("google", help="google | okta"),
+    service_account_file: Path | None = typer.Option(
+        None,
+        envvar="GOOGLE_SERVICE_ACCOUNT_JSON",
+        help="Path to Google service account JSON (Google Workspace only).",
+    ),
+    admin_email: str | None = typer.Option(
+        None,
+        envvar="GOOGLE_ADMIN_EMAIL",
+        help="Workspace super-admin to impersonate (Google Workspace only).",
+    ),
     db_path: Path = DEFAULT_DB,
 ) -> None:
     """Pull user inventory from the identity provider."""
     from afterlife.collectors.idp import build_idp_collector
 
-    n = build_idp_collector(provider, db_path=db_path).run()
+    kwargs: dict = {}
+    if provider == "google":
+        kwargs["service_account_file"] = service_account_file
+        kwargs["admin_email"] = admin_email
+    n = build_idp_collector(provider, db_path=db_path, **kwargs).run()
     console.print(f"[green]OK[/green] collected {n} identity records")
 
 

@@ -31,6 +31,7 @@ from rich.table import Table
 from afterlife import db
 from afterlife.collectors.aws import AWSCollector
 from afterlife.collectors.github import GitHubCollector
+from afterlife.collectors.google_workspace import GoogleWorkspaceCollector
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.rules.registry import run_all
 
@@ -39,6 +40,7 @@ console = Console()
 DEMO_NOW = datetime(2026, 5, 13, 12, 0, tzinfo=timezone.utc)
 MOTO_ACCOUNT_ID = "123456789012"
 GH_ORG = "test-org"
+GOOGLE_DOMAIN = "example.com"
 
 TRUST_POLICY = json.dumps(
     {
@@ -167,6 +169,46 @@ GH_DEPLOY_KEYS = {
 }
 
 
+# ---------- Google Workspace seed specs ----------
+
+
+@dataclass
+class GoogleUserSpec:
+    primary_email: str
+    full_name: str
+    suspended: bool = False
+    archived: bool = False
+    note: str = ""
+
+
+GOOGLE_USERS = [
+    GoogleUserSpec(
+        "alice@example.com", "Alice Example",
+        note="active — links AWS + GitHub + Google",
+    ),
+    GoogleUserSpec(
+        "bob@example.com", "Bob Example", suspended=True,
+        note="SUSPENDED — surfaces OFFBOARDED-OWNER on bob's AWS key",
+    ),
+    GoogleUserSpec(
+        "carol@example.com", "Carol Example", archived=True,
+        note="ARCHIVED — surfaces OFFBOARDED-OWNER on carol's AWS key",
+    ),
+    GoogleUserSpec(
+        "dave@example.com", "Dave Example",
+        note="active — links AWS + GitHub + Google",
+    ),
+    GoogleUserSpec(
+        "eve@example.com", "Eve Example",
+        note="active — links AWS + Google",
+    ),
+    GoogleUserSpec(
+        "nina@example.com", "Nina Newcomer",
+        note="active — Google only",
+    ),
+]
+
+
 # ---------- seeders ----------
 
 
@@ -217,6 +259,29 @@ def _gh_user_json(spec: GHMemberSpec) -> dict:
         "name": spec.name,
         "html_url": f"https://github.com/{spec.login}",
     }
+
+
+def _google_user_json(spec: GoogleUserSpec, idx: int) -> dict:
+    return {
+        "id": f"100000000000000000{idx:03d}",
+        "primaryEmail": spec.primary_email,
+        "name": {"fullName": spec.full_name},
+        "suspended": spec.suspended,
+        "archived": spec.archived,
+        "lastLoginTime": _iso(DEMO_NOW - timedelta(days=5)),
+        "creationTime": _iso(DEMO_NOW - timedelta(days=400)),
+        "suspensionReason": "ADMIN" if spec.suspended else None,
+    }
+
+
+def seed_google_routes(router) -> None:
+    """Register respx routes that serve the synthetic Workspace customer."""
+    users_json = [_google_user_json(u, i) for i, u in enumerate(GOOGLE_USERS)]
+    router.route(
+        method="GET",
+        host="admin.googleapis.com",
+        path="/admin/directory/v1/users",
+    ).mock(return_value=httpx.Response(200, json={"users": users_json}))
 
 
 def seed_github_routes(router) -> None:
@@ -273,17 +338,17 @@ def seed_github_routes(router) -> None:
 
 def _render_header() -> None:
     body = (
-        "An end-to-end run against in-memory AWS (moto) and in-memory\n"
-        "GitHub (respx). Plants 5 IAM users, 2 IAM roles, 3 GitHub members,\n"
-        "1 outside collaborator, 1 App installation, and 2 deploy keys —\n"
-        "then runs both collectors, the rules engine, and the identity graph."
+        "An end-to-end run against in-memory AWS (moto), GitHub (respx),\n"
+        "and Google Workspace (respx). Plants AWS IAM resources, a small\n"
+        "GitHub org, and a Workspace customer with two deprovisioned users,\n"
+        "then runs every collector, the rules engine, and the identity graph."
     )
     console.print(Panel.fit(body, title="Afterlife — Synthetic Demo", border_style="cyan"))
     console.print()
 
 
 def _render_aws_seed() -> None:
-    console.print("[bold][1/4][/bold] Seeding AWS environment...")
+    console.print("[bold][1/5][/bold] Seeding AWS environment...")
     for u in AWS_USERS:
         console.print(f"  [dim]●[/dim]  {u.name:<8}  [dim]({u.note})[/dim]")
     for role in AWS_ROLES:
@@ -292,7 +357,7 @@ def _render_aws_seed() -> None:
 
 
 def _render_github_seed() -> None:
-    console.print("[bold][2/4][/bold] Seeding GitHub organization...")
+    console.print("[bold][2/5][/bold] Seeding GitHub organization...")
     for m in GH_MEMBERS:
         console.print(f"  [dim]●[/dim]  member  {m.login:<16} [dim]({m.note})[/dim]")
     for m in GH_OUTSIDE:
@@ -305,6 +370,18 @@ def _render_github_seed() -> None:
         "legacy-deploy stale)[/dim]"
     )
     console.print(f"  [dim]●[/dim]  repo {GH_ORG}/infra [dim](no deploy keys)[/dim]")
+    console.print()
+
+
+def _render_google_seed() -> None:
+    console.print("[bold][3/5][/bold] Seeding Google Workspace customer...")
+    for u in GOOGLE_USERS:
+        status = "[red]SUSP[/red]" if u.suspended else (
+            "[red]ARCH[/red]" if u.archived else "[dim]act[/dim]"
+        )
+        console.print(
+            f"  [dim]●[/dim]  {status} {u.primary_email:<22} [dim]({u.note})[/dim]"
+        )
     console.print()
 
 
@@ -342,6 +419,22 @@ def _render_findings(findings) -> None:
     for sev in ("critical", "high", "medium", "low"):
         style = SEVERITY_STYLE[sev]
         console.print(f"  [{style}]{by_sev[sev]:>2}[/{style}] {sev}")
+
+    offboarded = [f for f in findings if f.rule_id == "OFFBOARDED-OWNER"]
+    if offboarded:
+        console.print()
+        console.print(
+            "[bold red]OFFBOARDED-OWNER fired:[/bold red] "
+            "credentials whose owners are deprovisioned in Google Workspace "
+            "but still active in AWS — the Uber 2022 pattern."
+        )
+        for f in offboarded:
+            console.print(
+                f"  → {f.evidence['credential_id']} owned by "
+                f"[bold]{f.evidence['owner_email']}[/bold] "
+                f"({f.evidence['deprovisioned_in']}: "
+                f"[red]{f.evidence['deprovisioned_status']}[/red])"
+            )
 
 
 def _render_identities(graph: IdentityGraph) -> None:
@@ -397,8 +490,10 @@ def main() -> None:
         )
         seed_aws(iam)
         seed_github_routes(gh_mock)
+        seed_google_routes(gh_mock)
         _render_aws_seed()
         _render_github_seed()
+        _render_google_seed()
 
         db.init_db(db_path)
         session = boto3.Session(
@@ -407,7 +502,7 @@ def main() -> None:
             aws_secret_access_key="testing",
         )
 
-        console.print("[bold][3/4][/bold] [dim]$[/dim] afterlife scan aws")
+        console.print("[bold][4/5][/bold] [dim]$[/dim] afterlife scan aws")
         n_aws = AWSCollector(
             db_path=db_path, profile="default", region="us-east-1", session=session
         ).run()
@@ -417,9 +512,14 @@ def main() -> None:
             token="demo-token", org=GH_ORG, db_path=db_path
         ).run()
         console.print(f"  [green]OK[/green] collected {n_gh} GitHub records")
+        console.print("       [dim]$[/dim] afterlife scan idp --provider google")
+        n_idp = GoogleWorkspaceCollector(
+            db_path=db_path, access_token="demo-token"
+        ).run()
+        console.print(f"  [green]OK[/green] collected {n_idp} Google Workspace records")
         console.print()
 
-        console.print("[bold][4/4][/bold] [dim]$[/dim] afterlife analyze")
+        console.print("[bold][5/5][/bold] [dim]$[/dim] afterlife analyze")
         findings = run_all(db_path)
         console.print()
         _render_findings(findings)
@@ -432,10 +532,6 @@ def main() -> None:
     console.print(
         f"[dim]DB left at {db_path} — try `afterlife identities --db-path "
         f"{db_path}` or `afterlife report --db-path {db_path}`.[/dim]"
-    )
-    console.print(
-        "[dim]OFFBOARDED-OWNER will fire once an IdP collector lands and "
-        "surfaces a deprovisioned status.[/dim]"
     )
 
 
