@@ -4,13 +4,15 @@ Plants a synthetic mix of fresh and stale IAM resources, runs the AWSCollector
 against the in-process moto backend, then runs the rules engine and prints
 findings. No Docker, no LocalStack, no real AWS account needed.
 
+Leaves the populated DB at ./.afterlife-demo.db so subsequent CLI commands
+(`afterlife identities`, `afterlife report`, etc.) can be run against it.
+
 Run with: `python demo/run.py` (or `make demo`).
 """
 
 from __future__ import annotations
 
 import json
-import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -185,7 +187,7 @@ def _render_findings(findings) -> None:
 def main() -> None:
     _render_header()
 
-    db_path = Path(tempfile.gettempdir()) / "afterlife-demo.db"
+    db_path = Path(".afterlife-demo.db").resolve()
     if db_path.exists():
         db_path.unlink()
 
@@ -216,6 +218,11 @@ def main() -> None:
         findings = run_all(db_path)
         console.print()
         _render_findings(findings)
+
+    console.print(
+        f"\n[dim]DB left at {db_path} — try `afterlife identities --db-path "
+        f"{db_path}`[/dim]"
+    )
 
 
 if __name__ == "__main__":

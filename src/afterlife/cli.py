@@ -96,6 +96,57 @@ def list_rules() -> None:
 
 
 @app.command()
+def identities(
+    db_path: Path = DEFAULT_DB,
+    cross_source_only: bool = typer.Option(
+        False,
+        "--cross-source-only/--all",
+        help="Show only identities linked across 2+ source systems.",
+    ),
+) -> None:
+    """Show identities grouped by linked person."""
+    from afterlife.graph.identity_graph import IdentityGraph
+
+    graph = IdentityGraph.from_db(db_path)
+    persons = list(graph.persons())
+    if cross_source_only:
+        persons = [p for p in persons if p.is_cross_source]
+    persons.sort(
+        key=lambda p: (not p.is_cross_source, p.canonical_email or "zzz", -len(p.identities))
+    )
+
+    cross = sum(1 for p in persons if p.is_cross_source)
+    sources = sorted({s for p in persons for s in p.sources})
+    header = f"[bold]{len(persons)}[/bold] "
+    header += "cross-source identities" if cross_source_only else "identities"
+    header += f" — sources: [dim]{', '.join(sources) or 'none'}[/dim]"
+    console.print(f"\n{header}")
+    if not cross_source_only:
+        console.print(f"  [green]{cross}[/green] cross-source")
+        console.print(f"  [dim]{len(persons) - cross}[/dim] single-source")
+    console.print()
+
+    for person in persons:
+        if person.canonical_email:
+            label = f"[bold]{person.canonical_email}[/bold]"
+            if person.is_cross_source:
+                label += " [green](cross-source)[/green]"
+            console.print(label)
+            for identity in person.identities:
+                console.print(
+                    f"  [cyan]{identity.source:<7}[/cyan] {identity.source_id} "
+                    f"[dim]({identity.status})[/dim]"
+                )
+        else:
+            i = person.identities[0]
+            console.print(
+                f"[bold]{i.name or i.source_id}[/bold] "
+                f"[dim]({i.source}, no email — unlinkable)[/dim]"
+            )
+        console.print()
+
+
+@app.command()
 def report(
     db_path: Path = DEFAULT_DB,
     fmt: str = typer.Option("json", "--format", help="json | html"),
