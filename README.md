@@ -26,17 +26,28 @@ Each rule's logic, false-positive notes, and remediation are in [docs/DETECTIONS
 
 ## Quickstart
 
-> The CLI surface below is the target interface for v0.1. Collectors are stubbed pending Week 1 implementation.
+Zero-config demo against an in-memory AWS account:
 
 ```bash
-pip install -e ".[dev]"
-afterlife init
-afterlife scan aws --profile my-profile
-afterlife scan github --org my-org
-afterlife scan idp --provider google
-afterlife analyze
-afterlife report --format json
+make install
+make demo
 ```
+
+That plants stale IAM users and roles, runs the real collector against an
+in-process [`moto`](https://github.com/getmoto/moto) backend, and prints
+findings. See [demo/README.md](demo/README.md) for what's planted and what fires.
+
+Against a real AWS account:
+
+```bash
+make install
+.venv/bin/afterlife init
+.venv/bin/afterlife scan aws --profile my-profile
+.venv/bin/afterlife analyze
+.venv/bin/afterlife report --format json
+```
+
+GitHub and IdP collectors are planned for Weeks 3–4.
 
 ## Architecture
 

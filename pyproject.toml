@@ -37,6 +37,7 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.10",
     "moto>=5.0",
+    "freezegun>=1.5",
 ]
 
 [project.scripts]
