@@ -1,11 +1,13 @@
-"""Self-contained Afterlife demo against an in-memory AWS environment.
+"""Self-contained Afterlife demo against in-memory AWS and GitHub.
 
-Plants a synthetic mix of fresh and stale IAM resources, runs the AWSCollector
-against the in-process moto backend, then runs the rules engine and prints
-findings. No Docker, no LocalStack, no real AWS account needed.
+Plants a synthetic mix of fresh and stale IAM resources via moto, plus a
+small synthetic GitHub org via respx, then runs the real AWS and GitHub
+collectors, the rules engine, and the identity graph. No Docker, no
+LocalStack, no real AWS account, no real GitHub token.
 
-Leaves the populated DB at ./.afterlife-demo.db so subsequent CLI commands
-(`afterlife identities`, `afterlife report`, etc.) can be run against it.
+Leaves the populated DB at ./.afterlife-demo.db so subsequent CLI
+commands (`afterlife identities`, `afterlife report`, etc.) can be run
+against it.
 
 Run with: `python demo/run.py` (or `make demo`).
 """
@@ -18,6 +20,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import boto3
+import httpx
+import respx
 from freezegun import freeze_time
 from moto import mock_aws
 from rich.console import Console
@@ -26,12 +30,16 @@ from rich.table import Table
 
 from afterlife import db
 from afterlife.collectors.aws import AWSCollector
+from afterlife.collectors.github import GitHubCollector
+from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.rules.registry import run_all
 
 console = Console()
 
 DEMO_NOW = datetime(2026, 5, 13, 12, 0, tzinfo=timezone.utc)
 MOTO_ACCOUNT_ID = "123456789012"
+GH_ORG = "test-org"
+
 TRUST_POLICY = json.dumps(
     {
         "Version": "2012-10-17",
@@ -44,6 +52,16 @@ TRUST_POLICY = json.dumps(
         ],
     }
 )
+
+SEVERITY_STYLE = {
+    "critical": "bold red",
+    "high": "magenta",
+    "medium": "yellow",
+    "low": "cyan",
+}
+
+
+# ---------- AWS seed specs ----------
 
 
 @dataclass
@@ -62,7 +80,7 @@ class RoleSpec:
     note: str
 
 
-USERS = [
+AWS_USERS = [
     UserSpec("alice", "alice@example.com", 30, 5, "fresh key, last used 5d ago"),
     UserSpec("bob", "bob@example.com", 200, 120, "key 200d old, last used 120d ago"),
     UserSpec("carol", "carol@example.com", 90, None, "key 90d old, never used"),
@@ -70,17 +88,86 @@ USERS = [
     UserSpec("eve", "eve@example.com", 10, None, "key 10d old, never used (control)"),
 ]
 
-ROLES = [
+AWS_ROLES = [
     RoleSpec("LegacyDeployRole", 300, "300d old, never assumed"),
     RoleSpec("ForgottenAuditRole", 250, "250d old, never assumed"),
 ]
 
-SEVERITY_STYLE = {
-    "critical": "bold red",
-    "high": "magenta",
-    "medium": "yellow",
-    "low": "cyan",
+
+# ---------- GitHub seed specs ----------
+
+
+@dataclass
+class GHMemberSpec:
+    login: str
+    email: str | None
+    name: str | None
+    is_outside: bool = False
+    note: str = ""
+
+
+GH_MEMBERS = [
+    GHMemberSpec("alice", "alice@example.com", "Alice", note="links to AWS alice via email"),
+    GHMemberSpec("bob123", None, None, note="private email — won't link"),
+    GHMemberSpec(
+        "dave-engineer", "dave@example.com", "Dave", note="links to AWS dave via email"
+    ),
+]
+
+GH_OUTSIDE = [
+    GHMemberSpec(
+        "contractor-jane",
+        "jane@vendor.com",
+        "Jane",
+        is_outside=True,
+        note="external vendor, GitHub only",
+    ),
+]
+
+
+def _iso(dt: datetime) -> str:
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+GH_INSTALLATIONS = [
+    {
+        "id": 42,
+        "app_slug": "dependabot",
+        "created_at": _iso(DEMO_NOW - timedelta(days=400)),
+        "permissions": {"contents": "read", "pull_requests": "write", "metadata": "read"},
+        "events": ["push", "pull_request"],
+    }
+]
+
+GH_REPOS = [
+    {"id": 1, "name": "main-app", "full_name": f"{GH_ORG}/main-app"},
+    {"id": 2, "name": "infra", "full_name": f"{GH_ORG}/infra"},
+]
+
+GH_DEPLOY_KEYS = {
+    f"{GH_ORG}/main-app": [
+        {
+            "id": 901,
+            "title": "ci-deploy",
+            "created_at": _iso(DEMO_NOW - timedelta(days=60)),
+            "last_used": _iso(DEMO_NOW - timedelta(days=5)),
+            "read_only": False,
+            "verified": True,
+        },
+        {
+            "id": 902,
+            "title": "legacy-deploy",
+            "created_at": _iso(DEMO_NOW - timedelta(days=300)),
+            "last_used": _iso(DEMO_NOW - timedelta(days=120)),
+            "read_only": True,
+            "verified": True,
+        },
+    ],
+    f"{GH_ORG}/infra": [],
 }
+
+
+# ---------- seeders ----------
 
 
 def _backdate_key_last_used(account_id: str, user_name: str, days_ago: int) -> None:
@@ -101,8 +188,8 @@ def _backdate_key_last_used(account_id: str, user_name: str, days_ago: int) -> N
         )
 
 
-def seed(iam) -> None:
-    for u in USERS:
+def seed_aws(iam) -> None:
+    for u in AWS_USERS:
         with freeze_time(DEMO_NOW - timedelta(days=u.created_days_ago)):
             iam.create_user(
                 UserName=u.name,
@@ -110,9 +197,10 @@ def seed(iam) -> None:
             )
             iam.create_access_key(UserName=u.name)
         if u.key_last_used_days_ago is not None:
-            _backdate_key_last_used(MOTO_ACCOUNT_ID, u.name, u.key_last_used_days_ago)
-
-    for role in ROLES:
+            _backdate_key_last_used(
+                MOTO_ACCOUNT_ID, u.name, u.key_last_used_days_ago
+            )
+    for role in AWS_ROLES:
         with freeze_time(DEMO_NOW - timedelta(days=role.created_days_ago)):
             iam.create_role(
                 RoleName=role.name,
@@ -120,22 +208,103 @@ def seed(iam) -> None:
             )
 
 
+def _gh_user_json(spec: GHMemberSpec) -> dict:
+    return {
+        "login": spec.login,
+        "id": abs(hash(spec.login)) % 100000,
+        "type": "User",
+        "email": spec.email,
+        "name": spec.name,
+        "html_url": f"https://github.com/{spec.login}",
+    }
+
+
+def seed_github_routes(router) -> None:
+    """Register respx routes that serve the synthetic GitHub org.
+
+    Routes are added to `router` (the context-manager mock instance) rather
+    than the global respx singleton, because `respx.mock(...)` with args
+    returns a fresh router.
+    """
+    router.route(
+        method="GET", host="api.github.com", path=f"/orgs/{GH_ORG}/members"
+    ).mock(
+        return_value=httpx.Response(
+            200, json=[_gh_user_json(m) for m in GH_MEMBERS]
+        )
+    )
+    router.route(
+        method="GET",
+        host="api.github.com",
+        path=f"/orgs/{GH_ORG}/outside_collaborators",
+    ).mock(
+        return_value=httpx.Response(
+            200, json=[_gh_user_json(m) for m in GH_OUTSIDE]
+        )
+    )
+    router.route(
+        method="GET", host="api.github.com", path=f"/orgs/{GH_ORG}/installations"
+    ).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "total_count": len(GH_INSTALLATIONS),
+                "installations": GH_INSTALLATIONS,
+            },
+        )
+    )
+    router.route(
+        method="GET", host="api.github.com", path=f"/orgs/{GH_ORG}/repos"
+    ).mock(return_value=httpx.Response(200, json=GH_REPOS))
+    for repo in GH_REPOS:
+        router.route(
+            method="GET",
+            host="api.github.com",
+            path=f"/repos/{repo['full_name']}/keys",
+        ).mock(
+            return_value=httpx.Response(
+                200, json=GH_DEPLOY_KEYS.get(repo["full_name"], [])
+            )
+        )
+
+
+# ---------- rendering ----------
+
+
 def _render_header() -> None:
     body = (
-        "A self-contained run against an in-memory AWS account.\n"
-        "Plants 5 IAM users and 2 IAM roles with mixed credential ages,\n"
-        "then runs the full scan → analyze pipeline."
+        "An end-to-end run against in-memory AWS (moto) and in-memory\n"
+        "GitHub (respx). Plants 5 IAM users, 2 IAM roles, 3 GitHub members,\n"
+        "1 outside collaborator, 1 App installation, and 2 deploy keys —\n"
+        "then runs both collectors, the rules engine, and the identity graph."
     )
     console.print(Panel.fit(body, title="Afterlife — Synthetic Demo", border_style="cyan"))
     console.print()
 
 
-def _render_seed_summary() -> None:
-    console.print("[bold][1/3][/bold] Seeding synthetic AWS environment...")
-    for u in USERS:
+def _render_aws_seed() -> None:
+    console.print("[bold][1/4][/bold] Seeding AWS environment...")
+    for u in AWS_USERS:
         console.print(f"  [dim]●[/dim]  {u.name:<8}  [dim]({u.note})[/dim]")
-    for role in ROLES:
+    for role in AWS_ROLES:
         console.print(f"  [dim]●[/dim]  role:{role.name}  [dim]({role.note})[/dim]")
+    console.print()
+
+
+def _render_github_seed() -> None:
+    console.print("[bold][2/4][/bold] Seeding GitHub organization...")
+    for m in GH_MEMBERS:
+        console.print(f"  [dim]●[/dim]  member  {m.login:<16} [dim]({m.note})[/dim]")
+    for m in GH_OUTSIDE:
+        console.print(
+            f"  [dim]●[/dim]  outside {m.login:<16} [dim]({m.note})[/dim]"
+        )
+    console.print(f"  [dim]●[/dim]  installation: dependabot")
+    console.print(
+        f"  [dim]●[/dim]  repo {GH_ORG}/main-app [dim](2 deploy keys: ci-deploy fresh, "
+        "legacy-deploy stale)[/dim]"
+    )
+    console.print(f"  [dim]●[/dim]  repo {GH_ORG}/infra [dim](no deploy keys)[/dim]")
     console.print()
 
 
@@ -153,16 +322,15 @@ def _render_findings(findings) -> None:
     for f in sorted(findings, key=lambda x: (severity_order[x.severity.value], x.rule_id)):
         sev = f.severity.value
         target = f.evidence.get("credential_id", "?")
-        # Compact AWS ARNs for readability
         if isinstance(target, str) and target.startswith("arn:aws:iam::"):
             target = target.split(":", 5)[-1]
+        if isinstance(target, str) and target.startswith("deploy_key:"):
+            target = target.split(":", 1)[1]  # drop the "deploy_key:" prefix
         extra = ""
         if f.rule_id == "UNUSED-CREDENTIAL":
-            extra = f" (unused since {f.evidence.get('last_used_at', '?')[:10]})"
-        elif f.rule_id == "NEVER-USED":
-            extra = f" (created {f.evidence.get('created_at', '?')[:10]})"
-        elif f.rule_id == "UNROTATED-KEY":
-            extra = f" (created {f.evidence.get('created_at', '?')[:10]})"
+            extra = f" (unused since {(f.evidence.get('last_used_at') or '?')[:10]})"
+        elif f.rule_id in {"NEVER-USED", "UNROTATED-KEY"}:
+            extra = f" (created {(f.evidence.get('created_at') or '?')[:10]})"
         table.add_row(
             f.rule_id,
             f"[{SEVERITY_STYLE[sev]}]{sev}[/{SEVERITY_STYLE[sev]}]",
@@ -174,14 +342,41 @@ def _render_findings(findings) -> None:
     for sev in ("critical", "high", "medium", "low"):
         style = SEVERITY_STYLE[sev]
         console.print(f"  [{style}]{by_sev[sev]:>2}[/{style}] {sev}")
+
+
+def _render_identities(graph: IdentityGraph) -> None:
+    persons = list(graph.persons())
+    cross = [p for p in persons if p.is_cross_source]
+    persons.sort(
+        key=lambda p: (not p.is_cross_source, p.canonical_email or "zzz")
+    )
+
+    console.print(
+        f"[bold]{len(persons)} persons[/bold] across "
+        f"[bold]{len({s for p in persons for s in p.sources})}[/bold] sources "
+        f"([green]{len(cross)} cross-source[/green])"
+    )
     console.print()
-    console.print(
-        "[dim]Quiet (no findings): alice (fresh), eve (within NEVER-USED grace period).[/dim]"
-    )
-    console.print(
-        "[dim]\nThe missing rule here is OFFBOARDED-OWNER, which fires once IdP[/dim]\n"
-        "[dim]identities are correlated to AWS principals (Week 5).[/dim]"
-    )
+    for person in persons:
+        if person.canonical_email:
+            label = f"[bold]{person.canonical_email}[/bold]"
+            if person.is_cross_source:
+                label += " [green](cross-source)[/green]"
+            console.print(label)
+            for i in person.identities:
+                console.print(
+                    f"  [cyan]{i.source:<7}[/cyan] {i.source_id}"
+                )
+        else:
+            i = person.identities[0]
+            console.print(
+                f"[bold]{i.name or i.source_id}[/bold] "
+                f"[dim]({i.source}, no email — unlinkable)[/dim]"
+            )
+    console.print()
+
+
+# ---------- main ----------
 
 
 def main() -> None:
@@ -191,37 +386,56 @@ def main() -> None:
     if db_path.exists():
         db_path.unlink()
 
-    with freeze_time(DEMO_NOW), mock_aws():
+    with freeze_time(DEMO_NOW), mock_aws(), respx.mock(
+        assert_all_called=False
+    ) as gh_mock:
         iam = boto3.client(
             "iam",
             region_name="us-east-1",
             aws_access_key_id="testing",
             aws_secret_access_key="testing",
         )
-        seed(iam)
-        _render_seed_summary()
+        seed_aws(iam)
+        seed_github_routes(gh_mock)
+        _render_aws_seed()
+        _render_github_seed()
 
-        console.print("[bold][2/3][/bold] [dim]$[/dim] afterlife scan aws")
         db.init_db(db_path)
         session = boto3.Session(
             region_name="us-east-1",
             aws_access_key_id="testing",
             aws_secret_access_key="testing",
         )
-        n = AWSCollector(
+
+        console.print("[bold][3/4][/bold] [dim]$[/dim] afterlife scan aws")
+        n_aws = AWSCollector(
             db_path=db_path, profile="default", region="us-east-1", session=session
         ).run()
-        console.print(f"  [green]OK[/green] collected {n} AWS records")
+        console.print(f"  [green]OK[/green] collected {n_aws} AWS records")
+        console.print("       [dim]$[/dim] afterlife scan github")
+        n_gh = GitHubCollector(
+            token="demo-token", org=GH_ORG, db_path=db_path
+        ).run()
+        console.print(f"  [green]OK[/green] collected {n_gh} GitHub records")
         console.print()
 
-        console.print("[bold][3/3][/bold] [dim]$[/dim] afterlife analyze")
+        console.print("[bold][4/4][/bold] [dim]$[/dim] afterlife analyze")
         findings = run_all(db_path)
         console.print()
         _render_findings(findings)
 
+    console.print()
+    console.print("[bold]       [dim]$[/dim] afterlife identities[/bold]")
+    console.print()
+    _render_identities(IdentityGraph.from_db(db_path))
+
     console.print(
-        f"\n[dim]DB left at {db_path} — try `afterlife identities --db-path "
-        f"{db_path}`[/dim]"
+        f"[dim]DB left at {db_path} — try `afterlife identities --db-path "
+        f"{db_path}` or `afterlife report --db-path {db_path}`.[/dim]"
+    )
+    console.print(
+        "[dim]OFFBOARDED-OWNER will fire once an IdP collector lands and "
+        "surfaces a deprovisioned status.[/dim]"
     )
 
 
