@@ -4,6 +4,7 @@ from pathlib import Path
 
 from afterlife import db
 from afterlife.config import DEFAULT, Config
+from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.models import Finding, Severity
 from afterlife.rules.base import Rule
 
@@ -19,7 +20,9 @@ def rule(
 ):
     """Decorator that registers a function as a detection rule.
 
-    The wrapped function takes (sqlite_conn, config) and returns list[Finding].
+    The wrapped function takes (sqlite_conn, config, graph) and returns
+    list[Finding]. Rules that do not need the identity graph still accept
+    the parameter — uniform signature keeps the registry simple.
     """
 
     def decorator(fn):
@@ -55,8 +58,9 @@ def run_all(db_path: Path, config: Config = DEFAULT) -> list[Finding]:
     all_rules()
     findings: list[Finding] = []
     with db.connect(db_path) as conn:
+        graph = IdentityGraph.from_conn(conn)
         for r in _RULES:
-            for f in r.evaluate(conn, config):
+            for f in r.evaluate(conn, config, graph):
                 db.insert_finding(conn, f)
                 findings.append(f)
     return findings

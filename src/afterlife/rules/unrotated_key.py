@@ -14,7 +14,7 @@ from afterlife.rules.registry import rule
     ),
     severity=Severity.MEDIUM,
 )
-def unrotated_key(conn, config) -> list[Finding]:
+def unrotated_key(conn, config, graph) -> list[Finding]:
     cutoff = datetime.now(timezone.utc) - timedelta(days=config.unrotated_key_days)
     rows = conn.execute(
         """

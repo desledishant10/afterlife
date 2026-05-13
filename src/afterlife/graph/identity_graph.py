@@ -63,22 +63,26 @@ class IdentityGraph:
 
     @classmethod
     def from_db(cls, db_path: Path) -> IdentityGraph:
-        graph = cls()
         with db.connect(db_path) as conn:
-            for row in conn.execute(
-                "SELECT source, source_id, email, name, status, metadata "
-                "FROM identities"
-            ):
-                graph._add_identity(_row_to_identity(row))
-            for row in conn.execute(
-                "SELECT source, credential_id, credential_type, owner_source, "
-                "owner_id, scopes, is_active, metadata FROM credentials"
-            ):
-                cred = _row_to_credential(row)
-                if cred.owner_source and cred.owner_id:
-                    graph._creds_by_owner.setdefault(
-                        (cred.owner_source, cred.owner_id), []
-                    ).append(cred)
+            return cls.from_conn(conn)
+
+    @classmethod
+    def from_conn(cls, conn: sqlite3.Connection) -> IdentityGraph:
+        graph = cls()
+        for row in conn.execute(
+            "SELECT source, source_id, email, name, status, metadata "
+            "FROM identities"
+        ):
+            graph._add_identity(_row_to_identity(row))
+        for row in conn.execute(
+            "SELECT source, credential_id, credential_type, owner_source, "
+            "owner_id, scopes, is_active, metadata FROM credentials"
+        ):
+            cred = _row_to_credential(row)
+            if cred.owner_source and cred.owner_id:
+                graph._creds_by_owner.setdefault(
+                    (cred.owner_source, cred.owner_id), []
+                ).append(cred)
         graph._link_by_email()
         return graph
 
