@@ -74,6 +74,9 @@ audit.
 - Newly-created credentials where the consumer hasn't been deployed yet.
   Mitigation: the grace period handles the common case; per-credential overrides
   are planned.
+- Credential types whose source system does not expose a usable last-used
+  signal (currently `github_app_installation`). These are skipped entirely —
+  see `TYPES_WITHOUT_USAGE_SIGNAL` in `rules/never_used.py`.
 
 **Remediation:** Confirm whether the credential was created for a use case that
 ever materialized. If not, revoke. If it's a deliberate dormant credential, tag

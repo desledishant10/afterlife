@@ -153,6 +153,27 @@ def test_never_used_quiet_when_created_at_missing(fresh_db):
     assert findings == []
 
 
+def test_never_used_skips_types_without_usage_signal(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(
+            conn,
+            make_credential(
+                source="github",
+                credential_type="github_app_installation",
+                credential_id="installation:42",
+                owner_source=None,
+                owner_id=None,
+                created_at=now - timedelta(days=400),
+                last_used_at=None,
+            ),
+        )
+
+    with db.connect(fresh_db) as conn:
+        findings = never_used(conn, Config())
+
+    assert findings == []
+
+
 def test_unrotated_key_fires_past_threshold(fresh_db, now):
     with db.connect(fresh_db) as conn:
         db.upsert_credential(

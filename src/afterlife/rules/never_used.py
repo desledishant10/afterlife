@@ -3,6 +3,11 @@ from datetime import datetime, timedelta, timezone
 from afterlife.models import Finding, Severity
 from afterlife.rules.registry import rule
 
+# Credential types whose source system does not expose a usable last-used
+# signal. Without a usage signal we cannot distinguish "never used" from
+# "actively used but unobservable", so we skip them.
+TYPES_WITHOUT_USAGE_SIGNAL = ("github_app_installation",)
+
 
 @rule(
     id="NEVER-USED",
@@ -16,8 +21,9 @@ from afterlife.rules.registry import rule
 )
 def never_used(conn, config) -> list[Finding]:
     cutoff = datetime.now(timezone.utc) - timedelta(days=config.never_used_grace_days)
+    placeholders = ",".join("?" * len(TYPES_WITHOUT_USAGE_SIGNAL))
     rows = conn.execute(
-        """
+        f"""
         SELECT source, credential_id, credential_type, owner_source, owner_id,
                created_at
         FROM credentials
@@ -25,8 +31,9 @@ def never_used(conn, config) -> list[Finding]:
           AND last_used_at IS NULL
           AND created_at IS NOT NULL
           AND created_at < ?
+          AND credential_type NOT IN ({placeholders})
         """,
-        (cutoff.isoformat(),),
+        (cutoff.isoformat(), *TYPES_WITHOUT_USAGE_SIGNAL),
     ).fetchall()
 
     findings: list[Finding] = []
