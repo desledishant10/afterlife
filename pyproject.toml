@@ -38,6 +38,7 @@ dev = [
     "mypy>=1.10",
     "moto>=5.0",
     "freezegun>=1.5",
+    "respx>=0.21",
 ]
 
 [project.scripts]
