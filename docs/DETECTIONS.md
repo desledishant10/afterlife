@@ -9,22 +9,35 @@ by file under `src/afterlife/rules/`.
 ## OFFBOARDED-OWNER
 
 **Severity:** Critical
-**Status:** Implemented
+**Status:** Implemented (graph-aware)
 
-A credential is still active in a downstream system (AWS, GitHub) but the owning
-identity has been deprovisioned in the IdP (`status` ∈ {suspended, deleted,
-deprovisioned, inactive, archived}). This is the canonical "ghost access" pattern.
+A credential is still active in a downstream system (AWS, GitHub) but its
+owner — or any identity linked to its owner via the cross-source identity
+graph — has been deprovisioned (`status` ∈ {suspended, deleted, deprovisioned,
+inactive, archived}). This is the canonical "ghost access" pattern.
 
-**Why it matters:** This is the precondition for the Uber 2022 breach. Offboarding
-flows propagate inconsistently; the IdP can show a user as suspended while their
-long-lived AWS access key remains valid.
+**How the graph factors in:** Each `Identity` is one source-system view of a
+person. An AWS IAM user named `alice` and an Okta identity for
+`alice@example.com` are two nodes; the graph links them by shared (lowercased)
+email. When this rule evaluates a credential, it looks up the owner identity
+and then asks the graph for the full `Person` — every linked identity — and
+fires if any of them are deprovisioned.
+
+This means the rule catches the Uber-2022 case: the AWS access key's *direct*
+owner (the AWS IAM user) is still "active" in AWS, but the linked Okta identity
+is suspended. The graph walk surfaces that.
+
+**Why it matters:** This is the precondition for the Uber 2022 breach.
+Offboarding flows propagate inconsistently; the IdP can show a user as
+suspended while their long-lived AWS access key remains valid.
 
 **False positives:**
-- Service accounts intentionally created under a human's identity, then "owned" by
-  a team after the human left. Mitigation: maintain an allowlist of credential IDs
-  that have been verified as legitimately ownerless.
-- Identity match is incorrect (e.g., two humans share an email alias). Mitigation:
-  add confidence scoring on the identity-join in Week 5.
+- Service accounts intentionally created under a human's identity, then "owned"
+  by a team after the human left. Mitigation: maintain an allowlist of
+  credential IDs that have been verified as legitimately ownerless.
+- Identity match is incorrect (e.g., two humans share an email alias).
+  Mitigation: the graph currently links by email only — login-equality and
+  fuzzy-name heuristics are deferred until we have a corpus to tune against.
 
 **Remediation:** Revoke the credential. Before deletion, confirm no automation
 depends on it; if it does, transition ownership to a non-human service account.

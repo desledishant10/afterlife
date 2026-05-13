@@ -19,7 +19,7 @@ TYPES_WITHOUT_USAGE_SIGNAL = ("github_app_installation",)
     ),
     severity=Severity.MEDIUM,
 )
-def never_used(conn, config) -> list[Finding]:
+def never_used(conn, config, graph) -> list[Finding]:
     cutoff = datetime.now(timezone.utc) - timedelta(days=config.never_used_grace_days)
     placeholders = ",".join("?" * len(TYPES_WITHOUT_USAGE_SIGNAL))
     rows = conn.execute(

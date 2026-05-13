@@ -14,7 +14,7 @@ from afterlife.rules.registry import rule
     ),
     severity=Severity.HIGH,
 )
-def unused_credential(conn, config) -> list[Finding]:
+def unused_credential(conn, config, graph) -> list[Finding]:
     cutoff = datetime.now(timezone.utc) - timedelta(days=config.unused_days_threshold)
     rows = conn.execute(
         """
