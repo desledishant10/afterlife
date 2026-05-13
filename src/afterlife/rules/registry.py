@@ -22,7 +22,7 @@ def rule(
 
     The wrapped function takes (sqlite_conn, config, graph) and returns
     list[Finding]. Rules that do not need the identity graph still accept
-    the parameter — uniform signature keeps the registry simple.
+    the parameter; uniform signature keeps the registry simple.
     """
 
     def decorator(fn):

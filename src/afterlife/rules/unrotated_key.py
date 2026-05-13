@@ -9,7 +9,7 @@ from afterlife.rules.registry import rule
     title="Long-lived AWS access key has not been rotated",
     description=(
         "An active AWS access key was created more than N days ago (default 180) and has "
-        "not been rotated. Long-lived static credentials are high-value targets — their "
+        "not been rotated. Long-lived static credentials are high-value targets: their "
         "value persists indefinitely and compromise is often only caught by usage anomalies."
     ),
     severity=Severity.MEDIUM,

@@ -58,7 +58,7 @@ def test_offboarded_owner_fires_across_email_link(fresh_db):
     """
     aws_arn = "arn:aws:iam::123:user/alice"
     with db.connect(fresh_db) as conn:
-        # AWS identity (the credential's direct owner) is "active" — by itself
+        # AWS identity (the credential's direct owner) is "active"; by itself
         # the rule wouldn't fire.
         db.upsert_identity(
             conn,
@@ -106,7 +106,7 @@ def test_offboarded_owner_fires_across_email_link(fresh_db):
 def test_offboarded_owner_quiet_when_no_link_to_deprovisioned(fresh_db):
     """AWS-owned credential, AWS identity active, an unrelated Okta user suspended.
 
-    No email link, so the graph treats them as separate persons — no finding.
+    No email link, so the graph treats them as separate persons; no finding.
     """
     aws_arn = "arn:aws:iam::123:user/alice"
     with db.connect(fresh_db) as conn:

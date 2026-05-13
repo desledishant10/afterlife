@@ -2,7 +2,7 @@
 
 Auth uses a service account with domain-wide delegation, impersonating a
 super-admin. The JWT bearer flow is implemented inline against httpx so the
-whole network path is mockable with respx — no `google-auth` / `requests`
+whole network path is mockable with respx, no `google-auth` / `requests`
 dependency.
 
 For tests and the demo, pass `access_token=...` directly to skip the OAuth

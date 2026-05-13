@@ -12,15 +12,15 @@ by file under `src/afterlife/rules/`.
 **Status:** Implemented (graph-aware)
 
 A credential is still active in a downstream system (AWS, GitHub) but its
-owner — or any identity linked to its owner via the cross-source identity
-graph — has been deprovisioned (`status` ∈ {suspended, deleted, deprovisioned,
+owner, or any identity linked to its owner via the cross-source identity
+graph, has been deprovisioned (`status` ∈ {suspended, deleted, deprovisioned,
 inactive, archived}). This is the canonical "ghost access" pattern.
 
 **How the graph factors in:** Each `Identity` is one source-system view of a
 person. An AWS IAM user named `alice` and an Okta identity for
 `alice@example.com` are two nodes; the graph links them by shared (lowercased)
 email. When this rule evaluates a credential, it looks up the owner identity
-and then asks the graph for the full `Person` — every linked identity — and
+and then asks the graph for the full `Person` (every linked identity) and
 fires if any of them are deprovisioned.
 
 This means the rule catches the Uber-2022 case: the AWS access key's *direct*
@@ -36,7 +36,7 @@ suspended while their long-lived AWS access key remains valid.
   by a team after the human left. Mitigation: maintain an allowlist of
   credential IDs that have been verified as legitimately ownerless.
 - Identity match is incorrect (e.g., two humans share an email alias).
-  Mitigation: the graph currently links by email only — login-equality and
+  Mitigation: the graph currently links by email only; login-equality and
   fuzzy-name heuristics are deferred until we have a corpus to tune against.
 
 **Remediation:** Revoke the credential. Before deletion, confirm no automation
@@ -88,7 +88,7 @@ audit.
   Mitigation: the grace period handles the common case; per-credential overrides
   are planned.
 - Credential types whose source system does not expose a usable last-used
-  signal (currently `github_app_installation`). These are skipped entirely —
+  signal (currently `github_app_installation`). These are skipped entirely;
   see `TYPES_WITHOUT_USAGE_SIGNAL` in `rules/never_used.py`.
 
 **Remediation:** Confirm whether the credential was created for a use case that
@@ -104,7 +104,7 @@ it so future scans skip it.
 
 Active AWS access key with `created_at` older than `unrotated_key_days`
 (default 180). For an access key, `created_at` is effectively the last rotation
-timestamp — AWS doesn't rotate keys in place; you create a new key and delete
+timestamp; AWS doesn't rotate keys in place, you create a new key and delete
 the old.
 
 **Why it matters:** Long-lived static credentials are the highest-EV target for
@@ -134,7 +134,7 @@ whose granted scopes include any write-tier permission.
 
 **Why it matters:** Third-party OAuth apps accumulate. The MailChimp / Slack / etc.
 integration someone set up two years ago for a one-time campaign is still
-authorized to read every channel — and the company likely no longer monitors it
+authorized to read every channel, and the company likely no longer monitors it
 for compromise.
 
 ---
@@ -162,5 +162,5 @@ GitHub PAT or deploy key whose owning user is no longer a member of the org.
 
 **Why it matters:** GitHub does not automatically invalidate PATs when a user is
 removed from an org. The token continues to work against any private repo the
-user still has access to elsewhere — including org repos the ex-user re-gains
+user still has access to elsewhere, including org repos the ex-user re-gains
 access to via outside-collaborator invites.

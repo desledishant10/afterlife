@@ -110,7 +110,7 @@ class GHMemberSpec:
 
 GH_MEMBERS = [
     GHMemberSpec("alice", "alice@example.com", "Alice", note="links to AWS alice via email"),
-    GHMemberSpec("bob123", None, None, note="private email — won't link"),
+    GHMemberSpec("bob123", None, None, note="private email, won't link"),
     GHMemberSpec(
         "dave-engineer", "dave@example.com", "Dave", note="links to AWS dave via email"
     ),
@@ -184,27 +184,27 @@ class GoogleUserSpec:
 GOOGLE_USERS = [
     GoogleUserSpec(
         "alice@example.com", "Alice Example",
-        note="active — links AWS + GitHub + Google",
+        note="active, links AWS + GitHub + Google",
     ),
     GoogleUserSpec(
         "bob@example.com", "Bob Example", suspended=True,
-        note="SUSPENDED — surfaces OFFBOARDED-OWNER on bob's AWS key",
+        note="SUSPENDED, surfaces OFFBOARDED-OWNER on bob's AWS key",
     ),
     GoogleUserSpec(
         "carol@example.com", "Carol Example", archived=True,
-        note="ARCHIVED — surfaces OFFBOARDED-OWNER on carol's AWS key",
+        note="ARCHIVED, surfaces OFFBOARDED-OWNER on carol's AWS key",
     ),
     GoogleUserSpec(
         "dave@example.com", "Dave Example",
-        note="active — links AWS + GitHub + Google",
+        note="active, links AWS + GitHub + Google",
     ),
     GoogleUserSpec(
         "eve@example.com", "Eve Example",
-        note="active — links AWS + Google",
+        note="active, links AWS + Google",
     ),
     GoogleUserSpec(
         "nina@example.com", "Nina Newcomer",
-        note="active — Google only",
+        note="active, Google only",
     ),
 ]
 
@@ -343,7 +343,7 @@ def _render_header() -> None:
         "GitHub org, and a Workspace customer with two deprovisioned users,\n"
         "then runs every collector, the rules engine, and the identity graph."
     )
-    console.print(Panel.fit(body, title="Afterlife — Synthetic Demo", border_style="cyan"))
+    console.print(Panel.fit(body, title="Afterlife: Synthetic Demo", border_style="cyan"))
     console.print()
 
 
@@ -426,7 +426,7 @@ def _render_findings(findings) -> None:
         console.print(
             "[bold red]OFFBOARDED-OWNER fired:[/bold red] "
             "credentials whose owners are deprovisioned in Google Workspace "
-            "but still active in AWS — the Uber 2022 pattern."
+            "but still active in AWS. The Uber 2022 pattern."
         )
         for f in offboarded:
             console.print(
@@ -464,7 +464,7 @@ def _render_identities(graph: IdentityGraph) -> None:
             i = person.identities[0]
             console.print(
                 f"[bold]{i.name or i.source_id}[/bold] "
-                f"[dim]({i.source}, no email — unlinkable)[/dim]"
+                f"[dim]({i.source}, no email, unlinkable)[/dim]"
             )
     console.print()
 
@@ -530,7 +530,7 @@ def main() -> None:
     _render_identities(IdentityGraph.from_db(db_path))
 
     console.print(
-        f"[dim]DB left at {db_path} — try `afterlife identities --db-path "
+        f"[dim]DB left at {db_path}. Try `afterlife identities --db-path "
         f"{db_path}` or `afterlife report --db-path {db_path}`.[/dim]"
     )
 

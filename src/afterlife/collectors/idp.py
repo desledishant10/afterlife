@@ -12,7 +12,7 @@ class OktaCollector(Collector):
         #   - GET /api/v1/users with paginator (link header)
         #   - statuses of interest: SUSPENDED, DEPROVISIONED, ACTIVE
         #   - lastLogin for staleness; OAuth tokens via /api/v1/users/{id}/tokens
-        raise NotImplementedError("Okta collector — implement in a future commit")
+        raise NotImplementedError("Okta collector not yet implemented")
 
 
 def build_idp_collector(provider: str, db_path: Path, **kwargs) -> Collector:

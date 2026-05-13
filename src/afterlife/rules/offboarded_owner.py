@@ -10,8 +10,8 @@ DEPROVISIONED_STATUSES = frozenset(
     id="OFFBOARDED-OWNER",
     title="Active credential belongs to a deprovisioned identity",
     description=(
-        "A credential is still active but its owner — or any identity linked "
-        "to its owner via the cross-source graph — has been suspended, archived, "
+        "A credential is still active but its owner, or any identity linked "
+        "to its owner via the cross-source graph, has been suspended, archived, "
         "or deleted. This is the Uber 2022 pattern: offboarding completed in HR "
         "but credentials survived in downstream systems."
     ),

@@ -1,7 +1,7 @@
 """Cross-source identity graph.
 
 Builds a graph linking identities across systems (AWS, GitHub, IdP) by shared
-correlation keys. v0.1 links by lowercased email only — login-equality and
+correlation keys. v0.1 links by lowercased email only; login-equality and
 fuzzy-name heuristics are deferred until we have a real false-positive corpus
 to tune against.
 
@@ -29,7 +29,7 @@ from afterlife.models import Credential, Identity
 
 @dataclass
 class Person:
-    """A connected component in the identity graph — one human across systems."""
+    """A connected component in the identity graph; one human across systems."""
 
     identities: list[Identity]
     canonical_email: str | None = None

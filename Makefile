@@ -4,7 +4,7 @@ VENV   ?= .venv
 .PHONY: install test demo clean help
 
 help:
-	@echo "Afterlife — make targets"
+	@echo "Afterlife: make targets"
 	@echo ""
 	@echo "  install   create $(VENV)/ and install with dev extras"
 	@echo "  test      run the pytest suite"

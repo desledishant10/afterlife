@@ -15,7 +15,7 @@ TYPES_WITHOUT_USAGE_SIGNAL = ("github_app_installation",)
     description=(
         "Credential was created more than N days ago (default 30) and has no recorded "
         "last-used timestamp. Frequently the result of 'just in case' provisioning that "
-        "was never picked up — among the easiest wins in any access audit."
+        "was never picked up. Among the easiest wins in any access audit."
     ),
     severity=Severity.MEDIUM,
 )

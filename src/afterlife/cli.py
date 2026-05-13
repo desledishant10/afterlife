@@ -6,7 +6,7 @@ from rich.console import Console
 from afterlife import db
 
 app = typer.Typer(
-    help="Afterlife — surface credentials that outlive their owners.",
+    help="Afterlife: surface credentials that outlive their owners.",
     no_args_is_help=True,
 )
 scan_app = typer.Typer(help="Collect data from a source.", no_args_is_help=True)
@@ -133,7 +133,7 @@ def identities(
     sources = sorted({s for p in persons for s in p.sources})
     header = f"[bold]{len(persons)}[/bold] "
     header += "cross-source identities" if cross_source_only else "identities"
-    header += f" — sources: [dim]{', '.join(sources) or 'none'}[/dim]"
+    header += f". Sources: [dim]{', '.join(sources) or 'none'}[/dim]"
     console.print(f"\n{header}")
     if not cross_source_only:
         console.print(f"  [green]{cross}[/green] cross-source")
@@ -155,7 +155,7 @@ def identities(
             i = person.identities[0]
             console.print(
                 f"[bold]{i.name or i.source_id}[/bold] "
-                f"[dim]({i.source}, no email — unlinkable)[/dim]"
+                f"[dim]({i.source}, no email, unlinkable)[/dim]"
             )
         console.print()
 
