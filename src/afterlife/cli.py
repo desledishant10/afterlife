@@ -164,14 +164,27 @@ def identities(
 def report(
     db_path: Path = DEFAULT_DB,
     fmt: str = typer.Option("json", "--format", help="json | html"),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Write to a file instead of stdout."
+    ),
 ) -> None:
     """Generate a report of findings."""
-    from afterlife.reporting.json_report import write_json_report
-
     if fmt == "json":
-        console.print(write_json_report(db_path))
+        from afterlife.reporting.json_report import write_json_report
+        content = write_json_report(db_path)
+    elif fmt == "html":
+        from afterlife.reporting.html_report import write_html_report
+        content = write_html_report(db_path)
     else:
-        console.print("[yellow]HTML report planned for Week 9.[/yellow]")
+        console.print(f"[red]Unknown format: {fmt}[/red]")
+        raise typer.Exit(1)
+
+    if output:
+        output.write_text(content)
+        console.print(f"[green]OK[/green] wrote {output}")
+    else:
+        # plain print: don't let rich inject ANSI codes into HTML/JSON
+        print(content)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ env/
 afterlife.db
 afterlife.db-journal
 *.db
+.afterlife-demo-report.html
 .env
 config.local.yaml
 reports/

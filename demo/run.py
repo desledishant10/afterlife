@@ -33,6 +33,7 @@ from afterlife.collectors.aws import AWSCollector
 from afterlife.collectors.github import GitHubCollector
 from afterlife.collectors.google_workspace import GoogleWorkspaceCollector
 from afterlife.graph.identity_graph import IdentityGraph
+from afterlife.reporting.html_report import write_html_report
 from afterlife.rules.registry import run_all
 
 console = Console()
@@ -529,9 +530,16 @@ def main() -> None:
     console.print()
     _render_identities(IdentityGraph.from_db(db_path))
 
+    report_path = Path(".afterlife-demo-report.html").resolve()
+    report_path.write_text(write_html_report(db_path))
+    console.print(
+        f"[bold green]HTML report[/bold green] written to "
+        f"[bold]{report_path.name}[/bold] ([dim]open in a browser[/dim])"
+    )
+    console.print()
     console.print(
         f"[dim]DB left at {db_path}. Try `afterlife identities --db-path "
-        f"{db_path}` or `afterlife report --db-path {db_path}`.[/dim]"
+        f"{db_path}` or `afterlife report --format html --db-path {db_path} -o report.html`.[/dim]"
     )
 
 
