@@ -26,28 +26,31 @@ Each rule's logic, false-positive notes, and remediation are in [docs/DETECTIONS
 
 ## Quickstart
 
-Zero-config demo against an in-memory AWS account:
+Zero-config demo against in-memory AWS, GitHub, and Google Workspace:
 
 ```bash
 make install
 make demo
 ```
 
-That plants stale IAM users and roles, runs the real collector against an
-in-process [`moto`](https://github.com/getmoto/moto) backend, and prints
-findings. See [demo/README.md](demo/README.md) for what's planted and what fires.
+That plants synthetic IAM resources, a synthetic GitHub org, and a synthetic
+Workspace customer (with some users suspended/archived), runs the real
+collectors against in-process mocks, and writes a self-contained HTML report
+to `.afterlife-demo-report.html`. See [demo/README.md](demo/README.md) for
+what's planted and what fires.
 
-Against a real AWS account:
+Against real systems:
 
 ```bash
 make install
 .venv/bin/afterlife init
 .venv/bin/afterlife scan aws --profile my-profile
+.venv/bin/afterlife scan github --org my-org --token $GITHUB_TOKEN
+.venv/bin/afterlife scan idp --provider google
 .venv/bin/afterlife analyze
-.venv/bin/afterlife report --format json
+.venv/bin/afterlife identities
+.venv/bin/afterlife report --format html -o report.html
 ```
-
-GitHub and IdP collectors are planned for Weeks 3–4.
 
 ## Architecture
 
