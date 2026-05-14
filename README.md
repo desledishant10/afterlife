@@ -46,11 +46,21 @@ make install
 .venv/bin/afterlife init
 .venv/bin/afterlife scan aws --profile my-profile
 .venv/bin/afterlife scan github --org my-org --token $GITHUB_TOKEN
-.venv/bin/afterlife scan idp --provider google
+.venv/bin/afterlife scan idp --provider google      # or --provider okta
 .venv/bin/afterlife analyze
 .venv/bin/afterlife identities
 .venv/bin/afterlife report --format html -o report.html
 ```
+
+## CI integration
+
+`afterlife report --format sarif` emits [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html),
+the standard format ingested by GitHub Code Scanning, Azure DevOps, GitLab, and
+most modern security pipelines. See
+[.github/workflows/afterlife.yml](.github/workflows/afterlife.yml) for a
+ready-to-adapt GitHub Action that scans AWS, GitHub, and Google Workspace on a
+weekly schedule, uploads SARIF to Code Scanning, and saves an HTML report as an
+artifact.
 
 ## Architecture
 

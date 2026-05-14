@@ -176,7 +176,7 @@ def identities(
 @app.command()
 def report(
     db_path: Path = DEFAULT_DB,
-    fmt: str = typer.Option("json", "--format", help="json | html"),
+    fmt: str = typer.Option("json", "--format", help="json | html | sarif"),
     output: Path | None = typer.Option(
         None, "--output", "-o", help="Write to a file instead of stdout."
     ),
@@ -188,6 +188,9 @@ def report(
     elif fmt == "html":
         from afterlife.reporting.html_report import write_html_report
         content = write_html_report(db_path)
+    elif fmt == "sarif":
+        from afterlife.reporting.sarif_report import write_sarif_report
+        content = write_sarif_report(db_path)
     else:
         console.print(f"[red]Unknown format: {fmt}[/red]")
         raise typer.Exit(1)
@@ -196,7 +199,7 @@ def report(
         output.write_text(content)
         console.print(f"[green]OK[/green] wrote {output}")
     else:
-        # plain print: don't let rich inject ANSI codes into HTML/JSON
+        # plain print: don't let rich inject ANSI codes into HTML/JSON/SARIF
         print(content)
 
 
