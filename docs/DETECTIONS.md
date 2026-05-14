@@ -208,6 +208,27 @@ credentials. Audit how the contractor was originally given AWS access.
 
 ---
 
+## STALE-DEPLOY-KEY-WRITE
+
+**Severity:** High
+**Status:** Implemented
+
+A deploy key with push or write access has not been used in
+`unused_days_threshold` days (default 90). A focused superset of
+UNUSED-CREDENTIAL for the supply-chain-critical case.
+
+**Why it matters:** A write-capable deploy key that nobody is touching is
+the cleanest path for an attacker who has stolen a CI image or developer
+laptop: still active, still trusted, but with nobody watching usage.
+Read-only deploy keys also surface via UNUSED-CREDENTIAL but at lower
+urgency.
+
+**Remediation:** Remove the key. If CI still needs it, rotate to a fresh
+key with a documented owner. If push is no longer required, replace with
+a read-only key.
+
+---
+
 ## ADMIN-CONCENTRATION
 
 **Severity:** Critical
