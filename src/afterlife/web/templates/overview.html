@@ -95,6 +95,26 @@
   {% endfor %}
 </div>
 
+<h2>Last scan per source</h2>
+{% if last_runs %}
+<table class="list">
+  <thead><tr><th>Source</th><th>Started (UTC)</th><th>Records</th><th></th></tr></thead>
+  <tbody>
+    {% for src, run in last_runs.items() %}
+    <tr>
+      <td>{{ src }}</td>
+      <td class="mono">{{ run.started_at[:19] }}</td>
+      <td>{{ run.records_collected if run.records_collected is not none else "—" }}</td>
+      <td>{% if run.error %}<span class="badge critical">failed</span>{% else %}<span class="tag active">ok</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p style="margin-top: 0.75rem;"><a href="/scan-history">See full scan history →</a></p>
+{% else %}
+<div class="empty">No scans recorded yet. Run <code>afterlife scan ...</code> to populate.</div>
+{% endif %}
+
 <h2>Top findings by blast radius</h2>
 {% if top_findings %}
   {% for f in top_findings %}

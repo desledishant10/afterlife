@@ -31,8 +31,11 @@ def scan_aws(
 ) -> None:
     """Pull IAM users, roles, access keys, and OAuth grants from AWS."""
     from afterlife.collectors.aws import AWSCollector
+    from afterlife.scan_runs import record_run
 
-    n = AWSCollector(profile=profile, region=region, db_path=db_path).run()
+    with record_run(db_path, "aws") as run:
+        n = AWSCollector(profile=profile, region=region, db_path=db_path).run()
+        run["records_collected"] = n
     console.print(f"[green]OK[/green] collected {n} AWS records")
 
 
@@ -44,8 +47,11 @@ def scan_github(
 ) -> None:
     """Pull org members, PATs, deploy keys, and OAuth apps from GitHub."""
     from afterlife.collectors.github import GitHubCollector
+    from afterlife.scan_runs import record_run
 
-    n = GitHubCollector(token=token, org=org, db_path=db_path).run()
+    with record_run(db_path, "github") as run:
+        n = GitHubCollector(token=token, org=org, db_path=db_path).run()
+        run["records_collected"] = n
     console.print(f"[green]OK[/green] collected {n} GitHub records")
 
 
@@ -76,6 +82,7 @@ def scan_idp(
 ) -> None:
     """Pull user inventory from the identity provider."""
     from afterlife.collectors.idp import build_idp_collector
+    from afterlife.scan_runs import record_run
 
     kwargs: dict = {}
     if provider == "google":
@@ -84,7 +91,9 @@ def scan_idp(
     elif provider == "okta":
         kwargs["domain"] = okta_domain
         kwargs["api_token"] = okta_token
-    n = build_idp_collector(provider, db_path=db_path, **kwargs).run()
+    with record_run(db_path, provider) as run:
+        n = build_idp_collector(provider, db_path=db_path, **kwargs).run()
+        run["records_collected"] = n
     console.print(f"[green]OK[/green] collected {n} identity records")
 
 

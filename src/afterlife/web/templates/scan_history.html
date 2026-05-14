@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Afterlife: Scan history{% endblock %}
+{% block content %}
+
+<div class="breadcrumbs">
+  <a href="/">Overview</a>
+  <span class="sep">›</span>
+  <span>Scan history</span>
+</div>
+
+<h1>Scan history</h1>
+<p class="meta">Last {{ runs|length }} run(s) across all collectors.</p>
+
+{% if runs %}
+<table class="list">
+  <thead>
+    <tr>
+      <th>Started (UTC)</th>
+      <th>Source</th>
+      <th>Records</th>
+      <th>Status</th>
+      <th>Duration</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in runs %}
+    <tr>
+      <td class="mono">{{ r.started_at[:19] }}</td>
+      <td>{{ r.source }}</td>
+      <td>
+        {% if r.records_collected is not none %}
+          {{ r.records_collected }}
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if r.error %}
+          <span class="badge critical">failed</span>
+          <span class="muted">{{ r.error[:80] }}{% if r.error|length > 80 %}…{% endif %}</span>
+        {% elif r.finished_at %}
+          <span class="tag active">ok</span>
+        {% else %}
+          <span class="tag inactive">in progress</span>
+        {% endif %}
+      </td>
+      <td class="mono muted">
+        {% if r.finished_at and r.started_at %}
+          {{ ((r.finished_at[11:19]|replace(":", "")|int) - (r.started_at[11:19]|replace(":", "")|int))|abs }}s
+        {% else %}
+          —
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No scan runs recorded yet. Run <code>afterlife scan ...</code> to see history.</div>
+{% endif %}
+
+{% endblock %}

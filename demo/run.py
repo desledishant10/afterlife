@@ -35,6 +35,7 @@ from afterlife.collectors.google_workspace import GoogleWorkspaceCollector
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.reporting.html_report import write_html_report
 from afterlife.rules.registry import run_all
+from afterlife.scan_runs import record_run
 
 console = Console()
 
@@ -614,19 +615,25 @@ def main() -> None:
         )
 
         console.print("[bold][4/5][/bold] [dim]$[/dim] afterlife scan aws")
-        n_aws = AWSCollector(
-            db_path=db_path, profile="default", region="us-east-1", session=session
-        ).run()
+        with record_run(db_path, "aws") as run:
+            n_aws = AWSCollector(
+                db_path=db_path, profile="default", region="us-east-1", session=session
+            ).run()
+            run["records_collected"] = n_aws
         console.print(f"  [green]OK[/green] collected {n_aws} AWS records")
         console.print("       [dim]$[/dim] afterlife scan github")
-        n_gh = GitHubCollector(
-            token="demo-token", org=GH_ORG, db_path=db_path
-        ).run()
+        with record_run(db_path, "github") as run:
+            n_gh = GitHubCollector(
+                token="demo-token", org=GH_ORG, db_path=db_path
+            ).run()
+            run["records_collected"] = n_gh
         console.print(f"  [green]OK[/green] collected {n_gh} GitHub records")
         console.print("       [dim]$[/dim] afterlife scan idp --provider google")
-        n_idp = GoogleWorkspaceCollector(
-            db_path=db_path, access_token="demo-token"
-        ).run()
+        with record_run(db_path, "google") as run:
+            n_idp = GoogleWorkspaceCollector(
+                db_path=db_path, access_token="demo-token"
+            ).run()
+            run["records_collected"] = n_idp
         console.print(f"  [green]OK[/green] collected {n_idp} Google Workspace records")
         console.print()
 
