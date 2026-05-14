@@ -1,0 +1,27 @@
+{% if findings %}
+  {% for f in findings %}
+  <details class="finding {{ f.severity }}">
+    <summary>
+      <span class="badge {{ f.severity }}">{{ f.severity }}</span>
+      {% if f.blast_label %}<span class="blast {{ f.blast_label }}">{{ f.blast_label }}{% if f.blast_radius %} ({{ "%.2f"|format(f.blast_radius.score) }}){% endif %}</span>{% endif %}
+      <span>{{ f.title }}</span>
+      <a class="rule-id" href="/findings/{{ f.id }}">#{{ f.id }} {{ f.rule_id }} →</a>
+    </summary>
+    <div class="body">
+      <p>{{ f.description }}</p>
+      {% if f.blast_radius %}
+      <h4>Blast radius</h4>
+      <div class="factors">{{ f.blast_radius.factors|join("; ") }}</div>
+      {% endif %}
+      <h4>Evidence</h4>
+      <pre>{{ f.evidence_pretty }}</pre>
+      {% if f.suggested_remediation %}
+      <h4>Suggested remediation</h4>
+      <p>{{ f.suggested_remediation }}</p>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+{% else %}
+  <div class="empty">No findings match the current filters.</div>
+{% endif %}

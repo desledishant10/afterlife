@@ -361,6 +361,205 @@ pre {
   text-align: center;
 }
 
+.breadcrumbs {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.breadcrumbs a { color: var(--muted); }
+.breadcrumbs a:hover { color: var(--fg); }
+.breadcrumbs .sep { margin: 0 0.4rem; opacity: 0.5; }
+
+.section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.section-title h2 { margin: 0; }
+.section-title .count {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: normal;
+}
+
+.kv-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.kv-grid dt {
+  color: var(--muted);
+  font-size: 0.825rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  align-self: center;
+}
+
+.kv-grid dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  word-break: break-all;
+}
+
+.kv-grid dd.plain { font-family: inherit; }
+
+table.list {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+table.list th,
+table.list td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+table.list th {
+  background: var(--bg-subtle);
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+}
+
+table.list tbody tr:last-child td { border-bottom: none; }
+table.list tbody tr { transition: background-color 0.1s; }
+table.list tbody tr:hover { background: var(--bg-subtle); }
+table.list td.mono { font-family: var(--mono); font-size: 0.825rem; }
+table.list td.muted { color: var(--muted); }
+
+a.action {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: var(--accent);
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-family: var(--mono);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  color: var(--fg-soft);
+  margin-right: 0.2rem;
+  margin-bottom: 0.2rem;
+}
+
+.tag.active { color: var(--link); border-color: var(--link); }
+.tag.inactive { color: var(--muted); }
+
+.linkable {
+  cursor: pointer;
+}
+
+a.row-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.row-link:hover {
+  text-decoration: none;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 280px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-right: 0.4rem;
+}
+
+.chip a { color: var(--muted); }
+.chip a:hover { color: var(--fg); text-decoration: none; }
+
+/* Server-rendered SVG charts (used on overview + findings page) */
+.chart {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.chart svg { display: block; width: 100%; height: auto; }
+.chart-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.bar-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; }
+.bar-row .bar-label {
+  width: 5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.bar-row .bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bar-row .bar-fill { height: 100%; }
+.bar-row .bar-fill.critical { background: var(--critical); }
+.bar-row .bar-fill.high { background: var(--high); }
+.bar-row .bar-fill.medium { background: var(--medium); }
+.bar-row .bar-fill.low { background: var(--low); }
+.bar-row .bar-fill.broad { background: var(--critical); }
+.bar-row .bar-fill.moderate { background: var(--medium); }
+.bar-row .bar-fill.limited { background: var(--low); }
+.bar-row .bar-count {
+  width: 2.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--fg-soft);
+}
+
 .htmx-indicator {
   opacity: 0;
   transition: opacity 0.2s;

@@ -13,7 +13,8 @@
   <span class="brand">Afterlife <span class="version">v{{ version }}</span></span>
   <a class="tab {% if request.url.path == '/' %}active{% endif %}" href="/">Overview</a>
   <a class="tab {% if request.url.path.startswith('/findings') %}active{% endif %}" href="/findings">Findings</a>
-  <a class="tab {% if request.url.path.startswith('/identities') %}active{% endif %}" href="/identities">Identities</a>
+  <a class="tab {% if request.url.path.startswith('/credentials') %}active{% endif %}" href="/credentials">Credentials</a>
+  <a class="tab {% if request.url.path.startswith('/identities') or request.url.path.startswith('/persons') %}active{% endif %}" href="/identities">Identities</a>
 </nav>
 <main>
 {% block content %}{% endblock %}
