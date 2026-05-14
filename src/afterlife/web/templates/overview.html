@@ -7,29 +7,21 @@
 
 <h2>Findings by severity</h2>
 <div class="row">
-  <a href="/findings?severity=critical" style="text-decoration: none;">
-    <div class="metric critical">
-      <span class="count">{{ severity_counts.critical }}</span>
-      <span class="label">Critical</span>
-    </div>
+  <a class="metric critical" href="/findings?severity=critical">
+    <span class="count">{{ severity_counts.critical }}</span>
+    <span class="label">Critical</span>
   </a>
-  <a href="/findings?severity=high" style="text-decoration: none;">
-    <div class="metric high">
-      <span class="count">{{ severity_counts.high }}</span>
-      <span class="label">High</span>
-    </div>
+  <a class="metric high" href="/findings?severity=high">
+    <span class="count">{{ severity_counts.high }}</span>
+    <span class="label">High</span>
   </a>
-  <a href="/findings?severity=medium" style="text-decoration: none;">
-    <div class="metric medium">
-      <span class="count">{{ severity_counts.medium }}</span>
-      <span class="label">Medium</span>
-    </div>
+  <a class="metric medium" href="/findings?severity=medium">
+    <span class="count">{{ severity_counts.medium }}</span>
+    <span class="label">Medium</span>
   </a>
-  <a href="/findings?severity=low" style="text-decoration: none;">
-    <div class="metric low">
-      <span class="count">{{ severity_counts.low }}</span>
-      <span class="label">Low</span>
-    </div>
+  <a class="metric low" href="/findings?severity=low">
+    <span class="count">{{ severity_counts.low }}</span>
+    <span class="label">Low</span>
   </a>
 </div>
 

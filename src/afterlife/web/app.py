@@ -17,18 +17,29 @@ from pathlib import Path
 
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from afterlife import __version__, db
 from afterlife.graph.identity_graph import IdentityGraph
+from afterlife.web.middleware import SecurityHeadersMiddleware
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 TEMPLATE_DIR = Path(__file__).parent / "templates"
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 def create_app(db_path: Path) -> FastAPI:
-    app = FastAPI(title="Afterlife", version=__version__)
+    app = FastAPI(
+        title="Afterlife",
+        version=__version__,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     app.state.db_path = Path(db_path).resolve()
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
     @app.get("/", response_class=HTMLResponse)
