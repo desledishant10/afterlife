@@ -626,3 +626,35 @@ def test_credentials_hx_partial_only(fresh_db):
 def test_nav_includes_credentials_tab(fresh_db):
     r = _client(fresh_db).get("/")
     assert 'href="/credentials"' in r.text
+
+
+def test_app_js_served(fresh_db):
+    client = _client(fresh_db)
+    r = client.get("/static/app.js")
+    assert r.status_code == 200
+    assert "navigator.clipboard" in r.text
+    assert "keydown" in r.text
+
+
+def test_keyboard_help_dialog_present(fresh_db):
+    r = _client(fresh_db).get("/")
+    assert '<dialog id="kbd-help"' in r.text
+    assert "Keyboard shortcuts" in r.text
+    assert "<kbd>/</kbd>" in r.text
+
+
+def test_footer_present(fresh_db):
+    r = _client(fresh_db).get("/")
+    assert '<footer class="site"' in r.text
+    assert "No data leaves this machine" in r.text
+
+
+def test_csp_allows_self_script_and_inline_style(fresh_db):
+    """app.js must be loadable under the configured CSP."""
+    r = _client(fresh_db).get("/")
+    csp = r.headers["Content-Security-Policy"]
+    assert "script-src 'self'" in csp
+    # We bundle JS at /static/app.js and HTMX at /static/htmx.min.js;
+    # both are same-origin so script-src 'self' is sufficient.
+    assert 'src="/static/app.js"' in r.text
+    assert 'src="/static/htmx.min.js"' in r.text

@@ -586,3 +586,127 @@ a.row-link:hover {
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* Copy-to-clipboard button overlaid on pre blocks */
+.copy-wrap { position: relative; }
+.copy-btn {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+  font-family: var(--mono);
+}
+
+.copy-wrap:hover .copy-btn { opacity: 1; }
+.copy-btn:hover { color: var(--fg); border-color: var(--accent); }
+.copy-btn:focus { opacity: 1; outline: none; border-color: var(--accent); }
+.copy-btn.copied { color: var(--link); border-color: var(--link); }
+
+/* Keyboard-shortcut help modal */
+dialog#kbd-help {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  max-width: 480px;
+  width: calc(100vw - 4rem);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+dialog#kbd-help::backdrop { background: rgba(0, 0, 0, 0.3); }
+dialog#kbd-help h3 { margin-top: 0; }
+dialog#kbd-help dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.4rem 1rem; margin: 0; }
+dialog#kbd-help dt { font-family: var(--mono); }
+dialog#kbd-help kbd {
+  font-family: var(--mono);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+dialog#kbd-help .close-row {
+  margin-top: 1rem;
+  text-align: right;
+}
+
+.kbd-hint {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  z-index: 5;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.kbd-hint:hover { opacity: 1; }
+.kbd-hint kbd {
+  font-family: var(--mono);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.7rem;
+}
+
+footer.site {
+  margin: 4rem auto 2rem;
+  max-width: 1100px;
+  padding: 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+footer.site .db-path {
+  font-family: var(--mono);
+  word-break: break-all;
+}
+
+/* Print stylesheet: render as a clean static audit handout */
+@media print {
+  :root {
+    --bg: white;
+    --bg-elevated: white;
+    --bg-subtle: #f0f0f0;
+    --fg: black;
+    --muted: #444;
+    --border: #999;
+    --shadow: none;
+    --shadow-hover: none;
+  }
+  nav, .filter-bar, .kbd-hint, .copy-btn, footer.site, .htmx-indicator { display: none !important; }
+  body { background: white; }
+  main { max-width: 100%; padding: 0; margin: 0; }
+  h1 { page-break-before: avoid; }
+  details.finding { page-break-inside: avoid; box-shadow: none !important; }
+  details.finding[open] summary::before, details.finding summary::before { display: none; }
+  details.finding > .body { display: block !important; }
+  details.finding > summary { font-weight: 600; }
+  /* Force all <details> open in print */
+  details:not([open]) > *:not(summary) { display: block !important; }
+  details summary { list-style: none; }
+  a { color: black; text-decoration: none; }
+  a[href]:not(.no-print-url)::after { content: " (" attr(href) ")"; font-size: 0.75em; color: #666; }
+  pre { white-space: pre-wrap; word-break: break-word; border: 1px solid #ccc; }
+}
