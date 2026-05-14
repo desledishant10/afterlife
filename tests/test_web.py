@@ -727,6 +727,114 @@ def test_ack_css_present(fresh_db):
     assert ".ack-btn" in r.text
 
 
+def test_findings_sort_blast_orders_by_blast(fresh_db):
+    _seed(
+        fresh_db,
+        findings=[
+            Finding(
+                rule_id="X",
+                severity=Severity.LOW,
+                title="lo-blast",
+                description="",
+                blast_radius=BlastRadius(score=0.2, factors=["small"]),
+            ),
+            Finding(
+                rule_id="Y",
+                severity=Severity.CRITICAL,
+                title="hi-blast",
+                description="",
+                blast_radius=BlastRadius(score=0.9, factors=["wide"]),
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/findings?sort=blast")
+    assert r.status_code == 200
+    hi_pos = r.text.find("hi-blast")
+    lo_pos = r.text.find("lo-blast")
+    assert hi_pos < lo_pos
+
+
+def test_findings_sort_newest_orders_by_detected_at(fresh_db):
+    from datetime import datetime, timedelta, timezone
+
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _seed(
+        fresh_db,
+        findings=[
+            Finding(
+                rule_id="X", severity=Severity.HIGH,
+                title="older-finding", description="",
+                detected_at=base,
+            ),
+            Finding(
+                rule_id="Y", severity=Severity.HIGH,
+                title="newer-finding", description="",
+                detected_at=base + timedelta(days=10),
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/findings?sort=newest")
+    new_pos = r.text.find("newer-finding")
+    old_pos = r.text.find("older-finding")
+    assert new_pos < old_pos
+
+
+def test_credentials_sort_by_type(fresh_db):
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="aws", credential_id="AKIA-Z",
+                credential_type="aws_access_key",
+            ),
+            Credential(
+                source="aws", credential_id="role-A",
+                credential_type="aws_iam_role",
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/credentials?sort=type&order=asc")
+    # aws_access_key sorts before aws_iam_role alphabetically
+    key_pos = r.text.find("AKIA-Z")
+    role_pos = r.text.find("role-A")
+    assert key_pos < role_pos
+
+
+def test_credentials_sort_desc(fresh_db):
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="aws", credential_id="AKIA-A",
+                credential_type="aws_access_key",
+            ),
+            Credential(
+                source="aws", credential_id="AKIA-Z",
+                credential_type="aws_access_key",
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/credentials?sort=id&order=desc")
+    z_pos = r.text.find("AKIA-Z")
+    a_pos = r.text.find("AKIA-A")
+    assert z_pos < a_pos
+
+
+def test_credentials_sort_header_marks_active_column(fresh_db):
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="aws", credential_id="AKIA-1",
+                credential_type="aws_access_key",
+            )
+        ],
+    )
+    r = _client(fresh_db).get("/credentials?sort=type&order=asc")
+    # The active sort column shows an arrow indicator
+    assert "↑" in r.text or "↓" in r.text
+
+
 def test_keyboard_help_dialog_present(fresh_db):
     r = _client(fresh_db).get("/")
     assert '<dialog id="kbd-help"' in r.text
