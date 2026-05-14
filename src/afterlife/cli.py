@@ -57,7 +57,7 @@ def scan_github(
 
 @scan_app.command("idp")
 def scan_idp(
-    provider: str = typer.Option("google", help="google | okta"),
+    provider: str = typer.Option("google", help="google | okta | azure"),
     service_account_file: Path | None = typer.Option(
         None,
         envvar="GOOGLE_SERVICE_ACCOUNT_JSON",
@@ -78,6 +78,18 @@ def scan_idp(
         envvar="OKTA_API_TOKEN",
         help="Okta SSWS API token (Okta only).",
     ),
+    azure_tenant_id: str | None = typer.Option(
+        None, envvar="AZURE_TENANT_ID",
+        help="Entra ID tenant id (Azure only).",
+    ),
+    azure_client_id: str | None = typer.Option(
+        None, envvar="AZURE_CLIENT_ID",
+        help="Entra ID app registration client id (Azure only).",
+    ),
+    azure_client_secret: str | None = typer.Option(
+        None, envvar="AZURE_CLIENT_SECRET",
+        help="Entra ID app registration client secret (Azure only).",
+    ),
     db_path: Path = DEFAULT_DB,
 ) -> None:
     """Pull user inventory from the identity provider."""
@@ -91,6 +103,10 @@ def scan_idp(
     elif provider == "okta":
         kwargs["domain"] = okta_domain
         kwargs["api_token"] = okta_token
+    elif provider == "azure":
+        kwargs["tenant_id"] = azure_tenant_id
+        kwargs["client_id"] = azure_client_id
+        kwargs["client_secret"] = azure_client_secret
     with record_run(db_path, provider) as run:
         n = build_idp_collector(provider, db_path=db_path, **kwargs).run()
         run["records_collected"] = n
