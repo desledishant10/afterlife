@@ -136,6 +136,8 @@ class GoogleWorkspaceCollector(Collector):
                 "last_login_time": last_login,
                 "org_unit_path": user.get("orgUnitPath"),
                 "is_admin": user.get("isAdmin"),
+                "is_enforced_in_2sv": user.get("isEnforcedIn2Sv"),
+                "is_enrolled_in_2sv": user.get("isEnrolledIn2Sv"),
                 "suspension_reason": user.get("suspensionReason"),
             },
         )

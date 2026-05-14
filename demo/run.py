@@ -101,6 +101,9 @@ AWS_USERS = [
     UserSpec("eve", "eve@example.com", 10, None,
              "key 10d old, never used (control)",
              policies=()),
+    UserSpec("contractor-jane", "jane@vendor.com", 60, 5,
+             "external contractor with AWS key",
+             policies=("ReadOnlyAccess",)),
 ]
 
 AWS_ROLES = [
@@ -223,6 +226,8 @@ class GoogleUserSpec:
     full_name: str
     suspended: bool = False
     archived: bool = False
+    is_admin: bool = False
+    is_enforced_in_2sv: bool = True
     note: str = ""
 
 
@@ -241,7 +246,8 @@ GOOGLE_USERS = [
     ),
     GoogleUserSpec(
         "dave@example.com", "Dave Example",
-        note="active, links AWS + GitHub + Google",
+        is_admin=True, is_enforced_in_2sv=False,
+        note="ADMIN WITHOUT 2FA, surfaces ADMIN-WITHOUT-MFA",
     ),
     GoogleUserSpec(
         "eve@example.com", "Eve Example",
@@ -249,7 +255,7 @@ GOOGLE_USERS = [
     ),
     GoogleUserSpec(
         "nina@example.com", "Nina Newcomer",
-        note="active, Google only",
+        note="active, Google only, surfaces ORPHANED-IDENTITY",
     ),
 ]
 
@@ -328,6 +334,9 @@ def _google_user_json(spec: GoogleUserSpec, idx: int) -> dict:
         "name": {"fullName": spec.full_name},
         "suspended": spec.suspended,
         "archived": spec.archived,
+        "isAdmin": spec.is_admin,
+        "isEnforcedIn2Sv": spec.is_enforced_in_2sv,
+        "isEnrolledIn2Sv": spec.is_enforced_in_2sv,
         "lastLoginTime": _iso(DEMO_NOW - timedelta(days=5)),
         "creationTime": _iso(DEMO_NOW - timedelta(days=400)),
         "suspensionReason": "ADMIN" if spec.suspended else None,
@@ -442,9 +451,16 @@ def _render_github_seed() -> None:
 def _render_google_seed() -> None:
     console.print("[bold][3/5][/bold] Seeding Google Workspace customer...")
     for u in GOOGLE_USERS:
-        status = "[red]SUSP[/red]" if u.suspended else (
-            "[red]ARCH[/red]" if u.archived else "[dim]act[/dim]"
-        )
+        if u.suspended:
+            status = "[red]SUSP[/red]"
+        elif u.archived:
+            status = "[red]ARCH[/red]"
+        elif u.is_admin and not u.is_enforced_in_2sv:
+            status = "[red]ADMIN[/red]"
+        elif u.is_admin:
+            status = "[yellow]admin[/yellow]"
+        else:
+            status = "[dim]act  [/dim]"
         console.print(
             f"  [dim]●[/dim]  {status} {u.primary_email:<22} [dim]({u.note})[/dim]"
         )
@@ -473,7 +489,14 @@ def _render_findings(findings) -> None:
         ),
     ):
         sev = f.severity.value
-        target = f.evidence.get("credential_id", "?")
+        target = (
+            f.evidence.get("credential_id")
+            or f.evidence.get("admin_id")
+            or f.evidence.get("idp_id")
+            or f.evidence.get("aws_identity")
+            or f.evidence.get("github_login")
+            or "?"
+        )
         if isinstance(target, str) and target.startswith("arn:aws:iam::"):
             target = target.split(":", 5)[-1]
         if isinstance(target, str) and target.startswith("deploy_key:"):

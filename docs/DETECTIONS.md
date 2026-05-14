@@ -164,3 +164,65 @@ GitHub PAT or deploy key whose owning user is no longer a member of the org.
 removed from an org. The token continues to work against any private repo the
 user still has access to elsewhere, including org repos the ex-user re-gains
 access to via outside-collaborator invites.
+
+---
+
+## ORPHANED-IDENTITY
+
+**Severity:** Low
+**Status:** Implemented
+
+An identity in an IdP (Okta or Google Workspace) is active but has no linked
+AWS or GitHub identity. Surfaced as a hygiene signal: either the user does not
+need downstream access (legitimate), or downstream provisioning has not
+completed.
+
+**Why it matters:** Stale IdP-only accounts accumulate. Each one is a future
+phishing target. Auditors want to see that "everyone with an active IdP login
+needs it for something."
+
+**False positives:** Plenty. Many companies use the IdP for non-technical apps
+(SSO into Notion, Slack) without provisioning AWS/GitHub. Mitigation: rule
+fires at low severity, treated as informational unless paired with downstream
+allowlists (planned).
+
+---
+
+## OUTSIDE-COLLAB-WITH-AWS
+
+**Severity:** High
+**Status:** Implemented
+
+A user marked as a GitHub outside collaborator (not a full org member) is
+linked by email to an AWS IAM identity. Fires once per active AWS credential
+the contractor owns; if no credentials exist but the IAM identity does, fires
+once for the link itself.
+
+**Why it matters:** External contractors and vendors should not hold
+long-lived static cloud credentials. Their access should be time-boxed via
+IAM Identity Center / Roles Anywhere. A GitHub outside collaborator with an
+AWS access key is a frequent contractor-handoff oversight.
+
+**Remediation:** Revoke the credential or migrate the workload to short-lived
+credentials. Audit how the contractor was originally given AWS access.
+
+---
+
+## ADMIN-WITHOUT-MFA
+
+**Severity:** Critical
+**Status:** Implemented for Google Workspace
+
+An IdP identity flagged as admin (Google `isAdmin: true`) does not have
+2-step verification enforced. The check is conservative: it fires only when
+`isEnforcedIn2Sv` is explicitly false, or both `isEnforcedIn2Sv` and
+`isEnrolledIn2Sv` are missing/false; voluntary enrollment is treated as
+protective enough to avoid noise.
+
+**Why it matters:** Admin account compromise via password reuse / phishing
+gives an attacker the keys to every downstream system the admin can
+provision. 2FA is the minimum bar; enforced, org-level 2FA is the right one.
+
+**Okta:** Not yet covered. Okta's MFA enforcement signal is at the
+group/policy level, not on the user object; capturing it requires an
+additional collector call that is not yet implemented.
