@@ -5,6 +5,7 @@ from afterlife.config import Config
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.models import Credential, Identity
 from afterlife.rules.admin_without_mfa import admin_without_mfa
+from afterlife.rules.cross_account_trust import cross_account_trust
 from afterlife.rules.inactive_admin import inactive_admin
 from afterlife.rules.never_used import never_used
 from afterlife.rules.offboarded_owner import offboarded_owner
@@ -352,6 +353,139 @@ def test_unrotated_key_ignores_inactive_keys(fresh_db, now):
     assert findings == []
 
 
+# ---------- CROSS-ACCOUNT-TRUST ----------
+
+
+def _role_credential(role_name, trust_policy, own_account="123456789012"):
+    return Credential(
+        source="aws",
+        credential_id=f"arn:aws:iam::{own_account}:role/{role_name}",
+        credential_type="aws_iam_role",
+        owner_source=None,
+        owner_id=None,
+        metadata={
+            "role_name": role_name,
+            "account_id": own_account,
+            "assume_role_policy_document": trust_policy,
+        },
+    )
+
+
+def test_cross_account_trust_fires_for_external_principal(fresh_db):
+    trust = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": "arn:aws:iam::999999999999:root"},
+            "Action": "sts:AssumeRole",
+        }],
+    }
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("ExternalAuditorRole", trust))
+
+    with db.connect(fresh_db) as conn:
+        findings = cross_account_trust(conn, Config(), _graph(conn))
+
+    assert len(findings) == 1
+    assert "999999999999" in findings[0].title
+    assert findings[0].evidence["external_principals"][0]["account_id"] == "999999999999"
+
+
+def test_cross_account_trust_quiet_for_same_account(fresh_db):
+    trust = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": "arn:aws:iam::123456789012:root"},
+            "Action": "sts:AssumeRole",
+        }],
+    }
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("OwnRole", trust))
+
+    with db.connect(fresh_db) as conn:
+        findings = cross_account_trust(conn, Config(), _graph(conn))
+
+    assert findings == []
+
+
+def test_cross_account_trust_quiet_for_service_principal(fresh_db):
+    """ec2.amazonaws.com is a service principal, not a foreign account."""
+    trust = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "ec2.amazonaws.com"},
+            "Action": "sts:AssumeRole",
+        }],
+    }
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("EC2Role", trust))
+
+    with db.connect(fresh_db) as conn:
+        findings = cross_account_trust(conn, Config(), _graph(conn))
+
+    assert findings == []
+
+
+def test_cross_account_trust_handles_principal_list(fresh_db):
+    trust = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": [
+                "arn:aws:iam::123456789012:root",
+                "arn:aws:iam::888888888888:root",
+                "arn:aws:iam::999999999999:root",
+            ]},
+            "Action": "sts:AssumeRole",
+        }],
+    }
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("MixedRole", trust))
+
+    with db.connect(fresh_db) as conn:
+        findings = cross_account_trust(conn, Config(), _graph(conn))
+
+    assert len(findings) == 1
+    accts = {e["account_id"] for e in findings[0].evidence["external_principals"]}
+    assert accts == {"888888888888", "999999999999"}
+
+
+def test_cross_account_trust_handles_assume_role_with_web_identity(fresh_db):
+    trust = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": "arn:aws:iam::999999999999:root"},
+            "Action": "sts:AssumeRoleWithWebIdentity",
+        }],
+    }
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("FederatedRole", trust))
+
+    with db.connect(fresh_db) as conn:
+        findings = cross_account_trust(conn, Config(), _graph(conn))
+
+    assert len(findings) == 1
+
+
+def test_cross_account_trust_quiet_when_no_policy(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(
+            conn,
+            Credential(
+                source="aws",
+                credential_id="arn:aws:iam::123:role/NoPolicy",
+                credential_type="aws_iam_role",
+                metadata={"role_name": "NoPolicy", "account_id": "123"},
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = cross_account_trust(conn, Config(), _graph(conn))
+    assert findings == []
+
+
 def test_rule_registry_discovers_all_rules():
     from afterlife.rules.registry import all_rules
 
@@ -365,6 +499,7 @@ def test_rule_registry_discovers_all_rules():
         "OUTSIDE-COLLAB-WITH-AWS",
         "ADMIN-WITHOUT-MFA",
         "INACTIVE-ADMIN",
+        "CROSS-ACCOUNT-TRUST",
     }
 
 

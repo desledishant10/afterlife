@@ -36,9 +36,13 @@ class AWSCollector(Collector):
         self.profile = profile
         self.region = region
         self._session = session
+        self._account_id: str | None = None
 
     def run(self) -> int:
-        iam = self._client()
+        sess = self._make_session()
+        iam = sess.client("iam")
+        sts = sess.client("sts")
+        self._account_id = sts.get_caller_identity()["Account"]
         count = 0
         with db.connect(self.db_path) as conn:
             for user in self._iter_users(iam):
@@ -54,12 +58,15 @@ class AWSCollector(Collector):
                 count += 1
         return count
 
-    def _client(self):
+    def _make_session(self) -> boto3.Session:
         if self._session is None:
             self._session = boto3.Session(
                 profile_name=self.profile, region_name=self.region
             )
-        return self._session.client("iam")
+        return self._session
+
+    def _client(self):
+        return self._make_session().client("iam")
 
     def _iter_users(self, iam) -> Iterator[dict[str, Any]]:
         for page in iam.get_paginator("list_users").paginate():
@@ -180,6 +187,10 @@ class AWSCollector(Collector):
                 "path": role.get("Path"),
                 "max_session_duration": role.get("MaxSessionDuration"),
                 "last_used_region": (role.get("RoleLastUsed") or {}).get("Region"),
+                "assume_role_policy_document": role.get(
+                    "AssumeRolePolicyDocument"
+                ),
+                "account_id": self._account_id,
             },
         )
 
