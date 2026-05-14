@@ -208,6 +208,31 @@ credentials. Audit how the contractor was originally given AWS access.
 
 ---
 
+## INACTIVE-ADMIN
+
+**Severity:** High
+**Status:** Implemented
+
+An IdP identity flagged as admin has not logged in for more than N days
+(default 30). Dormant admin accounts compound the risk because their
+credentials remain valid but nobody is watching for compromise signals.
+
+**Why it matters:** Admin role + no recent login = either the user moved
+roles and forgot to drop privileges, or the account is being saved for
+"break-glass" use that nobody actively monitors. Both states are easy to
+phish or credential-stuff into.
+
+**False positives:** Genuine break-glass admin accounts that are
+intentionally dormant. Mitigation: tag the credential in the allowlist and
+add an `until` date if dormancy is time-bounded.
+
+**Remediation:** Confirm whether the user still needs admin privileges.
+Downgrade or deprovision if not. If yes, document the business reason and
+enforce 2-step verification (the combination with ADMIN-WITHOUT-MFA is
+particularly bad).
+
+---
+
 ## ADMIN-WITHOUT-MFA
 
 **Severity:** Critical

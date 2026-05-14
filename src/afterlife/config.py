@@ -7,6 +7,7 @@ class Config:
     never_used_grace_days: int = 30
     unrotated_key_days: int = 180
     oauth_stale_days: int = 90
+    inactive_admin_days: int = 30
 
 
 DEFAULT = Config()
