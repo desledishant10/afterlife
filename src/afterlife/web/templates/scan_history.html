@@ -31,7 +31,7 @@
         {% if r.records_collected is not none %}
           {{ r.records_collected }}
         {% else %}
-          <span class="muted">—</span>
+          <span class="muted">-</span>
         {% endif %}
       </td>
       <td>
@@ -48,7 +48,7 @@
         {% if r.finished_at and r.started_at %}
           {{ ((r.finished_at[11:19]|replace(":", "")|int) - (r.started_at[11:19]|replace(":", "")|int))|abs }}s
         {% else %}
-          —
+          -
         {% endif %}
       </td>
     </tr>

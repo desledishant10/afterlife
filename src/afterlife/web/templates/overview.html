@@ -104,7 +104,7 @@
     <tr>
       <td>{{ src }}</td>
       <td class="mono">{{ run.started_at[:19] }}</td>
-      <td>{{ run.records_collected if run.records_collected is not none else "—" }}</td>
+      <td>{{ run.records_collected if run.records_collected is not none else "-" }}</td>
       <td>{% if run.error %}<span class="badge critical">failed</span>{% else %}<span class="tag active">ok</span>{% endif %}</td>
     </tr>
     {% endfor %}

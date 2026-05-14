@@ -333,7 +333,7 @@ GL_PROJECTS = [
     {"id": 9001, "name": "demo-service", "path_with_namespace": f"{GL_GROUP}/demo-service"},
 ]
 
-# A single project deploy key, fresh enough to stay quiet — its only job here
+# A single project deploy key, fresh enough to stay quiet. Its only job here
 # is to demonstrate GitLab credential collection working end-to-end.
 GL_DEPLOY_KEYS_RAW = [
     {

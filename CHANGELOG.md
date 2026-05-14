@@ -11,19 +11,19 @@ local web dashboard, allowlist/suppression, scan-run history, CI workflow.
 
 ### Source systems
 
-- **AWS IAM** — users, access keys (with attached and inline policy
+- **AWS IAM**: users, access keys (with attached and inline policy
   enrichment), roles (with trust policies for CROSS-ACCOUNT-TRUST), STS
   caller identity for own-account detection
-- **GCP IAM** — service accounts and user-managed keys
-- **GitHub** — org members, outside collaborators, App installations,
+- **GCP IAM**: service accounts and user-managed keys
+- **GitHub**: org members, outside collaborators, App installations,
   per-repo deploy keys
-- **GitLab** — group members (with inheritance), per-project deploy keys
-- **Google Workspace** — users, admin flag, 2-step verification state,
+- **GitLab**: group members (with inheritance), per-project deploy keys
+- **Google Workspace**: users, admin flag, 2-step verification state,
   last-login timestamp
-- **Microsoft Entra ID (Azure)** — users via Microsoft Graph
-- **Okta** — users with status mapping
-- **Slack** — workspace members, admins, bots, guests, deleted
-- **HashiCorp Vault** — entities with cross-system aliases (drives
+- **Microsoft Entra ID (Azure)**: users via Microsoft Graph
+- **Okta**: users with status mapping
+- **Slack**: workspace members, admins, bots, guests, deleted
+- **HashiCorp Vault**: entities with cross-system aliases (drives
   graph linking)
 
 ### Detection rules

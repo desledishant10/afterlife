@@ -22,7 +22,7 @@
     {{ identity.source_id }}
     <span class="status-{{ identity.status }}">({{ identity.status }})</span>
     {% if identity.email and identity.email != person.canonical_email %}
-      <span class="muted">— {{ identity.email }}</span>
+      <span class="muted">- {{ identity.email }}</span>
     {% endif %}
   </div>
   {% endfor %}
@@ -54,7 +54,7 @@
           {% for s in c.scopes[:3] %}<span class="tag">{{ s }}</span>{% endfor %}
           {% if c.scopes|length > 3 %}<span class="tag muted">+{{ c.scopes|length - 3 }}</span>{% endif %}
         {% else %}
-          <span class="muted">—</span>
+          <span class="muted">-</span>
         {% endif %}
       </td>
       <td>

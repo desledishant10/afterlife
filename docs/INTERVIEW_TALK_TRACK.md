@@ -8,11 +8,11 @@ roles.
 
 > Afterlife is a ghost-access auditor I built to detect credentials that
 > outlive their owners. It pulls identities and credentials from eight
-> systems — AWS, GCP, GitHub, GitLab, Google Workspace, Microsoft Entra,
-> Okta, Slack, Vault — builds a cross-source identity graph, and runs
+> systems (AWS, GCP, GitHub, GitLab, Google Workspace, Microsoft Entra,
+> Okta, Slack, Vault), builds a cross-source identity graph, and runs
 > eleven detection rules over it. The marquee detection is OFFBOARDED-OWNER,
 > which catches the Uber 2022 pattern: an active AWS access key whose
-> owner is suspended in the IdP. The graph layer is what makes this work —
+> owner is suspended in the IdP. The graph layer is what makes this work;
 > without joining the two views, you miss the link.
 
 ## The 90-second version (technical interviews)
@@ -21,7 +21,7 @@ roles.
 > systems with different APIs, different status vocabularies, and no shared
 > ID. So I built an identity-graph layer that links source-system
 > identities by lowercased email and, where available, by HashiCorp Vault's
-> aliases — which are the only thing in the wild that explicitly says "this
+> aliases, which are the only thing in the wild that explicitly says "this
 > Vault entity is also this AWS ARN."
 >
 > On top of the graph there's a decorator-based rule registry. Each rule
@@ -32,7 +32,7 @@ roles.
 > user is still active, her AWS access keys fire as critical.
 >
 > Findings get a blast-radius score based on the credential's type and
-> attached scopes — an AWS key with `AdministratorAccess` scores 0.85, a
+> attached scopes. An AWS key with `AdministratorAccess` scores 0.85, a
 > read-only deploy key scores 0.20. The score isn't used to filter; it's
 > used to break ties within a severity tier and to give reviewers a
 > "this one first" signal.
@@ -86,7 +86,7 @@ Likely follow-ups:
   processes you'd run on a cron with their results written to a shared
   DB; the rules engine is pure compute that runs offline. Product
   answer: you don't want to scan everything every hour; you want delta
-  scans triggered by IdP webhooks (offboarding events) — that's where the
+  scans triggered by IdP webhooks (offboarding events); that's where the
   real signal is.
 
 ## Angle: backend / platform engineering focus
@@ -148,7 +148,7 @@ Likely follow-ups:
   server is read-only and that's a deliberate design choice. ack is
   per-reviewer, not a property of the finding. Persisting it server-side
   would require auth, which would require sessions, which would require
-  the dashboard to write — and that's a much larger security surface for
+  the dashboard to write, and that's a much larger security surface for
   a feature that's purely UI.
 
 - **"Why server-rendered SVG instead of Chart.js?"** No JS dep, zero
