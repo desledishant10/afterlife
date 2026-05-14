@@ -113,17 +113,17 @@ choose based on consumer.
 `afterlife serve` launches a local FastAPI dashboard with seven pages.
 
 <p>
-  <img alt="Overview"       src="docs/media/overview.png"           width="320">
-  <img alt="Critical findings" src="docs/media/findings-critical.png" width="320">
-  <img alt="Person detail"  src="docs/media/person-detail.png"      width="320">
+  <img alt="Overview: severity tiles, blast tiers, identity-graph stats" src="docs/media/overview.png" width="320">
+  <img alt="Findings list with filter, sort, suppression toggle"        src="docs/media/findings.png" width="320">
+  <img alt="Credentials table across all sources"                       src="docs/media/credentials.png" width="320">
 </p>
 
 <details>
 <summary>More screenshots</summary>
 
-| Finding detail | Cross-source identities |
+| Last scan per source + top findings | Findings (medium and low tiers, orphaned identities) |
 |---|---|
-| <img alt="Finding detail" src="docs/media/finding-detail.png" width="420"> | <img alt="Identities" src="docs/media/identities.png" width="420"> |
+| <img alt="Overview, bottom half" src="docs/media/overview-detail.png" width="420"> | <img alt="Findings, more" src="docs/media/findings-more.png" width="420"> |
 
 </details>
 
