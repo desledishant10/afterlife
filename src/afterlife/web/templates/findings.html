@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Afterlife: Findings{% endblock %}
+{% block content %}
+
+<h1>Findings</h1>
+<p class="meta">{{ findings|length }} result(s){% if filter_severity or filter_rule or filter_blast %} after filtering{% endif %}.</p>
+
+<div class="filter-bar">
+  <form method="get" action="/findings">
+    <label>Severity
+      <select name="severity" onchange="this.form.submit()">
+        <option value="">(any)</option>
+        <option value="critical" {% if filter_severity == "critical" %}selected{% endif %}>critical</option>
+        <option value="high" {% if filter_severity == "high" %}selected{% endif %}>high</option>
+        <option value="medium" {% if filter_severity == "medium" %}selected{% endif %}>medium</option>
+        <option value="low" {% if filter_severity == "low" %}selected{% endif %}>low</option>
+      </select>
+    </label>
+    <label>Rule
+      <select name="rule" onchange="this.form.submit()">
+        <option value="">(any)</option>
+        {% for r in rule_ids %}
+        <option value="{{ r }}" {% if filter_rule == r %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Blast
+      <select name="blast" onchange="this.form.submit()">
+        <option value="">(any)</option>
+        <option value="broad" {% if filter_blast == "broad" %}selected{% endif %}>broad</option>
+        <option value="moderate" {% if filter_blast == "moderate" %}selected{% endif %}>moderate</option>
+        <option value="limited" {% if filter_blast == "limited" %}selected{% endif %}>limited</option>
+      </select>
+    </label>
+  </form>
+  {% if filter_severity or filter_rule or filter_blast %}
+  <a class="clear" href="/findings">Clear filters</a>
+  {% endif %}
+</div>
+
+{% if findings %}
+  {% for f in findings %}
+  <details class="finding {{ f.severity }}">
+    <summary>
+      <span class="badge {{ f.severity }}">{{ f.severity }}</span>
+      {% if f.blast_label %}<span class="blast {{ f.blast_label }}">{{ f.blast_label }}{% if f.blast_radius %} ({{ "%.2f"|format(f.blast_radius.score) }}){% endif %}</span>{% endif %}
+      <span>{{ f.title }}</span>
+      <span class="rule-id">{{ f.rule_id }}</span>
+    </summary>
+    <div class="body">
+      <p>{{ f.description }}</p>
+      {% if f.blast_radius %}
+      <h4>Blast radius</h4>
+      <div class="factors">{{ f.blast_radius.factors|join("; ") }}</div>
+      {% endif %}
+      <h4>Evidence</h4>
+      <pre>{{ f.evidence_pretty }}</pre>
+      {% if f.suggested_remediation %}
+      <h4>Suggested remediation</h4>
+      <p>{{ f.suggested_remediation }}</p>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+{% else %}
+  <div class="empty">No findings match the current filters.</div>
+{% endif %}
+
+{% endblock %}
