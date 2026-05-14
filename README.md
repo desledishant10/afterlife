@@ -2,6 +2,8 @@
 
 > Credentials that outlive their owners.
 
+![Afterlife demo: 20 findings, 16 persons across 8 sources, cross-source identity graph](docs/media/demo.gif)
+
 **Afterlife** is a ghost-access auditor. It pulls identities and credentials
 from your cloud, code, IdP, and SaaS systems into one identity graph, then
 runs detection rules over that graph and ranks findings by blast radius.
