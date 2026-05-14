@@ -115,8 +115,8 @@ AWS_USERS = [
              "key 90d old, never used",
              policies=("IAMFullAccess", "AmazonS3FullAccess")),
     UserSpec("dave", "dave@example.com", 250, 5,
-             "key 250d old, last used 5d ago",
-             policies=("ReadOnlyAccess",)),
+             "key 250d old + AdministratorAccess + Google admin: fires ADMIN-CONCENTRATION",
+             policies=("AdministratorAccess",)),
     UserSpec("eve", "eve@example.com", 10, None,
              "key 10d old, never used (control)",
              policies=()),
@@ -687,6 +687,7 @@ def _render_findings(findings) -> None:
             or f.evidence.get("idp_id")
             or f.evidence.get("aws_identity")
             or f.evidence.get("github_login")
+            or f.evidence.get("owner_email")
             or "?"
         )
         if isinstance(target, str) and target.startswith("arn:aws:iam::"):
