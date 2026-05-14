@@ -10,7 +10,7 @@ def write_json_report(db_path: Path) -> str:
             """
             SELECT rule_id, severity, title, description,
                    identity_source, identity_id, evidence,
-                   suggested_remediation, detected_at
+                   suggested_remediation, blast_radius, detected_at
             FROM findings
             ORDER BY
               CASE severity
@@ -28,5 +28,7 @@ def write_json_report(db_path: Path) -> str:
         d = dict(r)
         if d.get("evidence"):
             d["evidence"] = json.loads(d["evidence"])
+        if d.get("blast_radius"):
+            d["blast_radius"] = json.loads(d["blast_radius"])
         findings.append(d)
     return json.dumps({"count": len(findings), "findings": findings}, indent=2)
