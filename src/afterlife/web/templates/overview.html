@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Afterlife: Overview{% endblock %}
+{% block content %}
+
+<h1>Overview</h1>
+<p class="meta">{{ total_findings }} findings across {{ source_counts|length }} source system(s).</p>
+
+<h2>Findings by severity</h2>
+<div class="row">
+  <a href="/findings?severity=critical" style="text-decoration: none;">
+    <div class="metric critical">
+      <span class="count">{{ severity_counts.critical }}</span>
+      <span class="label">Critical</span>
+    </div>
+  </a>
+  <a href="/findings?severity=high" style="text-decoration: none;">
+    <div class="metric high">
+      <span class="count">{{ severity_counts.high }}</span>
+      <span class="label">High</span>
+    </div>
+  </a>
+  <a href="/findings?severity=medium" style="text-decoration: none;">
+    <div class="metric medium">
+      <span class="count">{{ severity_counts.medium }}</span>
+      <span class="label">Medium</span>
+    </div>
+  </a>
+  <a href="/findings?severity=low" style="text-decoration: none;">
+    <div class="metric low">
+      <span class="count">{{ severity_counts.low }}</span>
+      <span class="label">Low</span>
+    </div>
+  </a>
+</div>
+
+<h2>Identity graph</h2>
+<div class="row">
+  <div class="metric">
+    <span class="count">{{ total_persons }}</span>
+    <span class="label">Persons</span>
+  </div>
+  <div class="metric">
+    <span class="count">{{ cross_source_count }}</span>
+    <span class="label">Cross-source</span>
+  </div>
+  {% for src, n in source_counts.items() %}
+  <div class="metric">
+    <span class="count">{{ n }}</span>
+    <span class="label">{{ src }} identities</span>
+  </div>
+  {% endfor %}
+</div>
+
+<h2>Top findings by blast radius</h2>
+{% if top_findings %}
+  {% for f in top_findings %}
+  <details class="finding {{ f.severity }}">
+    <summary>
+      <span class="badge {{ f.severity }}">{{ f.severity }}</span>
+      {% if f.blast_label %}<span class="blast {{ f.blast_label }}">{{ f.blast_label }}</span>{% endif %}
+      <span>{{ f.title }}</span>
+      <span class="rule-id">{{ f.rule_id }}</span>
+    </summary>
+    <div class="body">
+      <p>{{ f.description }}</p>
+      {% if f.blast_radius %}
+      <div class="factors">{{ f.blast_radius.factors|join("; ") }}</div>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+  <p style="margin-top: 1rem;"><a href="/findings">See all findings →</a></p>
+{% else %}
+  <div class="empty">No findings yet. Run `afterlife analyze` against a populated DB.</div>
+{% endif %}
+
+{% endblock %}

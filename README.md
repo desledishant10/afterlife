@@ -50,7 +50,18 @@ make install
 .venv/bin/afterlife analyze
 .venv/bin/afterlife identities
 .venv/bin/afterlife report --format html -o report.html
+.venv/bin/afterlife serve                           # local dashboard at http://127.0.0.1:8000
 ```
+
+## Web dashboard
+
+`afterlife serve` launches a local read-only dashboard with three pages:
+
+- **Overview**: severity tiles, source counts, top findings by blast radius.
+- **Findings**: filter by severity, rule, or blast tier; expand for evidence and remediation.
+- **Identities**: cross-source person view, toggle for cross-source-only.
+
+The dashboard reads directly from the SQLite store and writes nothing. No auth, intended for `localhost` only.
 
 ## CI integration
 

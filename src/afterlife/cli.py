@@ -174,6 +174,31 @@ def identities(
 
 
 @app.command()
+def serve(
+    db_path: Path = DEFAULT_DB,
+    host: str = typer.Option("127.0.0.1", help="Bind address."),
+    port: int = typer.Option(8000, help="Bind port."),
+) -> None:
+    """Launch the local web dashboard at http://host:port."""
+    import uvicorn
+
+    from afterlife.web import create_app
+
+    if not db_path.exists():
+        console.print(
+            f"[red]DB not found at {db_path}.[/red] Run `afterlife init` first."
+        )
+        raise typer.Exit(1)
+
+    web_app = create_app(db_path)
+    console.print(
+        f"[green]Afterlife dashboard:[/green] http://{host}:{port}  "
+        f"[dim](Ctrl+C to stop)[/dim]"
+    )
+    uvicorn.run(web_app, host=host, port=port, log_level="warning")
+
+
+@app.command()
 def report(
     db_path: Path = DEFAULT_DB,
     fmt: str = typer.Option("json", "--format", help="json | html | sarif"),
