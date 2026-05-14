@@ -208,6 +208,36 @@ credentials. Audit how the contractor was originally given AWS access.
 
 ---
 
+## CROSS-ACCOUNT-TRUST
+
+**Severity:** Critical
+**Status:** Implemented
+
+An IAM role's trust policy grants `sts:AssumeRole` (or
+`AssumeRoleWithWebIdentity`, etc.) to an AWS principal in a different
+account than the role's own. The check is conservative: AWS service
+principals (`ec2.amazonaws.com`, `lambda.amazonaws.com`, ...), federated
+identities, and same-account principals do not fire it. Only explicit
+foreign `Principal.AWS` ARNs count.
+
+**Why it matters:** Cross-account trust was the precondition for the
+Capital One 2019 breach — a misconfigured WAF role was assumable from
+a foreign account and that path was used to reach S3. Even when
+intentional, every external trust is a third-party-risk surface that
+deserves review.
+
+**False positives:** Genuinely intentional inter-account access (audit
+accounts, security-tools accounts, dev-vs-prod separation). Mitigation:
+suppress via the allowlist once verified, ideally with an `ExternalId`
+condition documented in the trust policy.
+
+**Remediation:** Confirm the cross-account trust is intentional. If so,
+scope the role's permissions to the minimum needed and require an
+`ExternalId` in the trust policy condition. If not, restrict `Principal`
+to your own account.
+
+---
+
 ## INACTIVE-ADMIN
 
 **Severity:** High

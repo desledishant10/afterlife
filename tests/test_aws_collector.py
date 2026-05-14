@@ -147,6 +147,43 @@ def test_collects_roles_as_ownerless_credentials(aws_env, fresh_db):
         assert roles[0]["credential_id"].endswith(":role/DeployRole")
 
 
+def test_role_trust_policy_captured_in_metadata(aws_env, fresh_db):
+    iam = aws_env.client("iam")
+    iam.create_role(RoleName="ServiceRole", AssumeRolePolicyDocument=TRUST_POLICY)
+
+    _run_collector(aws_env, fresh_db)
+
+    with db.connect(fresh_db) as conn:
+        row = conn.execute(
+            "SELECT metadata FROM credentials WHERE credential_type = 'aws_iam_role'"
+        ).fetchone()
+        meta = json.loads(row["metadata"])
+        assert "assume_role_policy_document" in meta
+        trust = meta["assume_role_policy_document"]
+        assert trust is not None
+        # The trust policy structure should round-trip
+        stmts = trust.get("Statement") or []
+        assert any(
+            (s.get("Principal") or {}).get("Service") == "ec2.amazonaws.com"
+            for s in (stmts if isinstance(stmts, list) else [stmts])
+        )
+        assert meta["account_id"] == "123456789012"  # moto default
+
+
+def test_aws_account_id_captured_via_sts(aws_env, fresh_db):
+    iam = aws_env.client("iam")
+    iam.create_user(UserName="alice")
+
+    _run_collector(aws_env, fresh_db)
+
+    # The user's ARN should embed the account id we report.
+    with db.connect(fresh_db) as conn:
+        row = conn.execute(
+            "SELECT source_id FROM identities WHERE name = 'alice'"
+        ).fetchone()
+        assert "123456789012" in row["source_id"]
+
+
 def test_handles_multiple_users_and_keys(aws_env, fresh_db):
     iam = aws_env.client("iam")
     for name in ("alice", "bob", "carol"):

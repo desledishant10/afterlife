@@ -57,6 +57,21 @@ TRUST_POLICY = json.dumps(
     }
 )
 
+# Foreign-account trust used by the ExternalAuditorRole below to demonstrate
+# CROSS-ACCOUNT-TRUST. 999999999999 is the "external" account in the demo.
+EXTERNAL_TRUST_POLICY = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"AWS": "arn:aws:iam::999999999999:root"},
+                "Action": "sts:AssumeRole",
+            }
+        ],
+    }
+)
+
 SEVERITY_STYLE = {
     "critical": "bold red",
     "high": "magenta",
@@ -84,6 +99,7 @@ class RoleSpec:
     created_days_ago: int
     note: str
     policies: tuple[str, ...] = ()
+    trust_policy: str = TRUST_POLICY
 
 
 AWS_USERS = [
@@ -112,6 +128,10 @@ AWS_ROLES = [
              policies=("PowerUserAccess",)),
     RoleSpec("ForgottenAuditRole", 250, "250d old, never assumed",
              policies=("ReadOnlyAccess",)),
+    RoleSpec("ExternalAuditorRole", 120,
+             "trusted by external account 999...999, fires CROSS-ACCOUNT-TRUST",
+             policies=("ReadOnlyAccess",),
+             trust_policy=EXTERNAL_TRUST_POLICY),
 ]
 
 # Customer-managed-policy stand-ins (moto does not preload AWS managed
@@ -311,7 +331,7 @@ def seed_aws(iam) -> None:
         with freeze_time(DEMO_NOW - timedelta(days=role.created_days_ago)):
             iam.create_role(
                 RoleName=role.name,
-                AssumeRolePolicyDocument=TRUST_POLICY,
+                AssumeRolePolicyDocument=role.trust_policy,
             )
             for policy_name in role.policies:
                 iam.attach_role_policy(
