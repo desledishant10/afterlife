@@ -12,6 +12,7 @@ from afterlife.rules.never_used import never_used
 from afterlife.rules.offboarded_owner import offboarded_owner
 from afterlife.rules.orphaned_identity import orphaned_identity
 from afterlife.rules.outside_collab_with_aws import outside_collab_with_aws
+from afterlife.rules.stale_deploy_key_write import stale_deploy_key_write
 from afterlife.rules.unrotated_key import unrotated_key
 from afterlife.rules.unused_credential import unused_credential
 from tests.conftest import make_credential, make_identity
@@ -354,6 +355,106 @@ def test_unrotated_key_ignores_inactive_keys(fresh_db, now):
     assert findings == []
 
 
+# ---------- STALE-DEPLOY-KEY-WRITE ----------
+
+
+def test_stale_deploy_key_write_fires_on_write_capable_stale_github_key(
+    fresh_db, now
+):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(
+            conn,
+            Credential(
+                source="github",
+                credential_id="deploy_key:test/app:1",
+                credential_type="github_deploy_key",
+                scopes=["read", "write"],
+                last_used_at=now - timedelta(days=120),
+                metadata={"repo": "test/app", "title": "ci-deploy"},
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = stale_deploy_key_write(
+            conn, Config(unused_days_threshold=90), _graph(conn)
+        )
+    assert len(findings) == 1
+    assert findings[0].evidence["credential_id"] == "deploy_key:test/app:1"
+
+
+def test_stale_deploy_key_write_quiet_for_read_only_key(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(
+            conn,
+            Credential(
+                source="github",
+                credential_id="deploy_key:test/app:2",
+                credential_type="github_deploy_key",
+                scopes=["read"],
+                last_used_at=now - timedelta(days=200),
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = stale_deploy_key_write(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_stale_deploy_key_write_quiet_when_recent(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(
+            conn,
+            Credential(
+                source="github",
+                credential_id="deploy_key:test/app:3",
+                credential_type="github_deploy_key",
+                scopes=["read", "write"],
+                last_used_at=now - timedelta(days=10),
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = stale_deploy_key_write(
+            conn, Config(unused_days_threshold=90), _graph(conn)
+        )
+    assert findings == []
+
+
+def test_stale_deploy_key_write_handles_gitlab_push_scope(fresh_db, now):
+    """GitLab encodes write access as scope `push` rather than `write`."""
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(
+            conn,
+            Credential(
+                source="gitlab",
+                credential_id="deploy_key:demo/app:4",
+                credential_type="gitlab_deploy_key",
+                scopes=["push"],
+                last_used_at=now - timedelta(days=150),
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = stale_deploy_key_write(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+
+
+def test_stale_deploy_key_write_quiet_for_non_deploy_credential_types(
+    fresh_db, now
+):
+    """An aws_access_key is handled by UNUSED-CREDENTIAL; not our scope."""
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(
+            conn,
+            Credential(
+                source="aws",
+                credential_id="AKIA-X",
+                credential_type="aws_access_key",
+                scopes=["AdministratorAccess"],
+                last_used_at=now - timedelta(days=200),
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = stale_deploy_key_write(conn, Config(), _graph(conn))
+    assert findings == []
+
+
 # ---------- ADMIN-CONCENTRATION ----------
 
 
@@ -636,6 +737,7 @@ def test_rule_registry_discovers_all_rules():
         "INACTIVE-ADMIN",
         "CROSS-ACCOUNT-TRUST",
         "ADMIN-CONCENTRATION",
+        "STALE-DEPLOY-KEY-WRITE",
     }
 
 

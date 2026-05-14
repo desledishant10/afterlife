@@ -271,7 +271,7 @@ GH_DEPLOY_KEYS = {
             "title": "legacy-deploy",
             "created_at": _iso(DEMO_NOW - timedelta(days=300)),
             "last_used": _iso(DEMO_NOW - timedelta(days=120)),
-            "read_only": True,
+            "read_only": False,
             "verified": True,
         },
     ],
