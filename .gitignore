@@ -25,6 +25,14 @@ config.local.yaml
 reports/
 .afterlife/
 
+# Ad-hoc report artifacts users generate while exploring
+report.json
+report.html
+report.pdf
+report.sarif
+afterlife.sarif
+afterlife-report.*
+
 .pytest_cache/
 .coverage
 htmlcov/
