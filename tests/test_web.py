@@ -628,6 +628,37 @@ def test_nav_includes_credentials_tab(fresh_db):
     assert 'href="/credentials"' in r.text
 
 
+def test_scan_history_page_renders(fresh_db):
+    from afterlife.scan_runs import record_run
+
+    with record_run(fresh_db, "aws") as run:
+        run["records_collected"] = 7
+
+    r = _client(fresh_db).get("/scan-history")
+    assert r.status_code == 200
+    assert "Scan history" in r.text
+    assert "aws" in r.text
+    import re
+    assert re.search(r"<td>\s*7\s*</td>", r.text) is not None
+
+
+def test_overview_shows_last_run_per_source(fresh_db):
+    from afterlife.scan_runs import record_run
+
+    with record_run(fresh_db, "aws") as run:
+        run["records_collected"] = 12
+
+    r = _client(fresh_db).get("/")
+    assert "Last scan per source" in r.text
+    assert "aws" in r.text
+
+
+def test_scan_history_empty_state(fresh_db):
+    r = _client(fresh_db).get("/scan-history")
+    assert r.status_code == 200
+    assert "No scan runs recorded" in r.text
+
+
 def test_suppressed_findings_hidden_by_default(fresh_db):
     _seed(
         fresh_db,

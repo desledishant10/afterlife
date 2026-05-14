@@ -49,9 +49,19 @@ CREATE TABLE IF NOT EXISTS findings (
     detected_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS scan_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    records_collected INTEGER,
+    error TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_identities_email ON identities(email);
 CREATE INDEX IF NOT EXISTS idx_credentials_owner ON credentials(owner_source, owner_id);
 CREATE INDEX IF NOT EXISTS idx_findings_severity ON findings(severity);
+CREATE INDEX IF NOT EXISTS idx_scan_runs_started ON scan_runs(started_at);
 """
 
 

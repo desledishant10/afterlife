@@ -29,6 +29,7 @@ from fastapi.templating import Jinja2Templates
 
 from afterlife import __version__, db
 from afterlife.graph.identity_graph import IdentityGraph, Person
+from afterlife.scan_runs import latest_per_source, list_runs
 from afterlife.web.middleware import SecurityHeadersMiddleware
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -76,7 +77,7 @@ def create_app(db_path: Path) -> FastAPI:
             ).fetchone()["n"]
 
         top = sorted(
-            findings,
+            (f for f in findings if not f.get("suppressed")),
             key=lambda f: (
                 -((f.get("blast_radius") or {}).get("score") or 0.0),
                 SEVERITY_ORDER.get(f["severity"], 99),
@@ -85,6 +86,8 @@ def create_app(db_path: Path) -> FastAPI:
         )[:5]
         for f in top:
             f["blast_label"] = _blast_label(f.get("blast_radius"))
+
+        last_runs = latest_per_source(app.state.db_path)
 
         return templates.TemplateResponse(
             request=request,
@@ -99,6 +102,19 @@ def create_app(db_path: Path) -> FastAPI:
                 "total_persons": len(persons),
                 "cross_source_count": len(cross_source),
                 "top_findings": top,
+                "last_runs": last_runs,
+            },
+        )
+
+    @app.get("/scan-history", response_class=HTMLResponse)
+    def scan_history(request: Request):
+        runs = list_runs(app.state.db_path, limit=500)
+        return templates.TemplateResponse(
+            request=request,
+            name="scan_history.html",
+            context={
+                "version": __version__,
+                "runs": runs,
             },
         )
 
