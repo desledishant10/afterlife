@@ -222,12 +222,34 @@ def serve(
 @app.command()
 def report(
     db_path: Path = DEFAULT_DB,
-    fmt: str = typer.Option("json", "--format", help="json | html | sarif"),
+    fmt: str = typer.Option(
+        "json", "--format", help="json | html | sarif | pdf"
+    ),
     output: Path | None = typer.Option(
         None, "--output", "-o", help="Write to a file instead of stdout."
     ),
 ) -> None:
     """Generate a report of findings."""
+    if fmt == "pdf":
+        from afterlife.reporting.pdf_report import (
+            PdfDependencyError,
+            write_pdf_report,
+        )
+
+        if output is None:
+            console.print(
+                "[red]PDF output requires --output (binary cannot be printed to stdout).[/red]"
+            )
+            raise typer.Exit(1)
+        try:
+            pdf_bytes = write_pdf_report(db_path)
+        except PdfDependencyError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
+        output.write_bytes(pdf_bytes)
+        console.print(f"[green]OK[/green] wrote {output} ({len(pdf_bytes)} bytes)")
+        return
+
     if fmt == "json":
         from afterlife.reporting.json_report import write_json_report
         content = write_json_report(db_path)
