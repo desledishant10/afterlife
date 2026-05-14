@@ -5,6 +5,7 @@ from afterlife.config import Config
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.models import Credential, Identity
 from afterlife.rules.admin_without_mfa import admin_without_mfa
+from afterlife.rules.inactive_admin import inactive_admin
 from afterlife.rules.never_used import never_used
 from afterlife.rules.offboarded_owner import offboarded_owner
 from afterlife.rules.orphaned_identity import orphaned_identity
@@ -363,6 +364,7 @@ def test_rule_registry_discovers_all_rules():
         "ORPHANED-IDENTITY",
         "OUTSIDE-COLLAB-WITH-AWS",
         "ADMIN-WITHOUT-MFA",
+        "INACTIVE-ADMIN",
     }
 
 
@@ -604,6 +606,94 @@ def test_admin_without_mfa_quiet_when_2sv_signal_unknown_and_enrolled(fresh_db):
         )
     with db.connect(fresh_db) as conn:
         findings = admin_without_mfa(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+# ---------- INACTIVE-ADMIN ----------
+
+
+def test_inactive_admin_fires_for_stale_login(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-old",
+                email="old-admin@example.com",
+                name="Old Admin",
+                status="active",
+                metadata={
+                    "is_admin": True,
+                    "last_login_time": (now - timedelta(days=120)).isoformat(),
+                },
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = inactive_admin(conn, Config(inactive_admin_days=30), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].rule_id == "INACTIVE-ADMIN"
+    assert findings[0].evidence["days_since_last_login"] >= 119
+
+
+def test_inactive_admin_quiet_when_recent_login(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-active",
+                email="active@example.com",
+                name="Active",
+                status="active",
+                metadata={
+                    "is_admin": True,
+                    "last_login_time": (now - timedelta(days=5)).isoformat(),
+                },
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = inactive_admin(conn, Config(inactive_admin_days=30), _graph(conn))
+    assert findings == []
+
+
+def test_inactive_admin_quiet_for_non_admin(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-user",
+                email="user@example.com",
+                name="User",
+                status="active",
+                metadata={
+                    "is_admin": False,
+                    "last_login_time": (now - timedelta(days=300)).isoformat(),
+                },
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = inactive_admin(conn, Config(inactive_admin_days=30), _graph(conn))
+    assert findings == []
+
+
+def test_inactive_admin_quiet_when_no_login_data(fresh_db):
+    """A user who never logged in is handled elsewhere; this rule needs a
+    real timestamp to compute a 'days inactive' value."""
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-new",
+                email="new@example.com",
+                name="New",
+                status="active",
+                metadata={"is_admin": True, "last_login_time": None},
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = inactive_admin(conn, Config(), _graph(conn))
     assert findings == []
 
 

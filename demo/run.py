@@ -229,6 +229,7 @@ class GoogleUserSpec:
     archived: bool = False
     is_admin: bool = False
     is_enforced_in_2sv: bool = True
+    last_login_days_ago: int = 5
     note: str = ""
 
 
@@ -248,7 +249,8 @@ GOOGLE_USERS = [
     GoogleUserSpec(
         "dave@example.com", "Dave Example",
         is_admin=True, is_enforced_in_2sv=False,
-        note="ADMIN WITHOUT 2FA, surfaces ADMIN-WITHOUT-MFA",
+        last_login_days_ago=120,
+        note="ADMIN WITHOUT 2FA + inactive, fires both ADMIN-WITHOUT-MFA and INACTIVE-ADMIN",
     ),
     GoogleUserSpec(
         "eve@example.com", "Eve Example",
@@ -338,7 +340,7 @@ def _google_user_json(spec: GoogleUserSpec, idx: int) -> dict:
         "isAdmin": spec.is_admin,
         "isEnforcedIn2Sv": spec.is_enforced_in_2sv,
         "isEnrolledIn2Sv": spec.is_enforced_in_2sv,
-        "lastLoginTime": _iso(DEMO_NOW - timedelta(days=5)),
+        "lastLoginTime": _iso(DEMO_NOW - timedelta(days=spec.last_login_days_ago)),
         "creationTime": _iso(DEMO_NOW - timedelta(days=400)),
         "suspensionReason": "ADMIN" if spec.suspended else None,
     }
