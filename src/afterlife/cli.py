@@ -55,6 +55,21 @@ def scan_github(
     console.print(f"[green]OK[/green] collected {n} GitHub records")
 
 
+@scan_app.command("slack")
+def scan_slack(
+    token: str = typer.Option(..., envvar="SLACK_TOKEN"),
+    db_path: Path = DEFAULT_DB,
+) -> None:
+    """Pull workspace members from Slack (users.list)."""
+    from afterlife.collectors.slack import SlackCollector
+    from afterlife.scan_runs import record_run
+
+    with record_run(db_path, "slack") as run:
+        n = SlackCollector(token=token, db_path=db_path).run()
+        run["records_collected"] = n
+    console.print(f"[green]OK[/green] collected {n} Slack records")
+
+
 @scan_app.command("gcp")
 def scan_gcp(
     project: str = typer.Option(..., envvar="GCP_PROJECT"),
