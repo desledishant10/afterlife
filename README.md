@@ -63,6 +63,21 @@ make install
 
 The dashboard reads directly from the SQLite store and writes nothing. No auth, intended for `localhost` only.
 
+## PDF export
+
+`afterlife report --format pdf -o report.pdf` produces a publication-ready PDF
+of the same audit (severity tiles, full findings with evidence, identity graph).
+Requires the `[pdf]` extra plus a system Pango install:
+
+```bash
+pip install -e ".[pdf]"
+# macOS
+brew install pango
+export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib
+# Debian / Ubuntu
+sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0
+```
+
 ## CI integration
 
 `afterlife report --format sarif` emits [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html),
