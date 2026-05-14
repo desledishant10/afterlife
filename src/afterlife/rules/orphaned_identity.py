@@ -1,7 +1,7 @@
 from afterlife.models import Finding, Severity
 from afterlife.rules.registry import rule
 
-IDP_SOURCES = frozenset({"okta", "google"})
+IDP_SOURCES = frozenset({"okta", "google", "azure"})
 DOWNSTREAM_SOURCES = frozenset({"aws", "github"})
 
 

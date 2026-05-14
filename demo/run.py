@@ -30,6 +30,7 @@ from rich.table import Table
 
 from afterlife import db
 from afterlife.collectors.aws import AWSCollector
+from afterlife.collectors.azure_entra import AzureEntraIDCollector
 from afterlife.collectors.github import GitHubCollector
 from afterlife.collectors.google_workspace import GoogleWorkspaceCollector
 from afterlife.graph.identity_graph import IdentityGraph
@@ -253,6 +254,35 @@ class GoogleUserSpec:
     note: str = ""
 
 
+# ---------- Azure / Entra ID seed specs ----------
+
+
+@dataclass
+class AzureUserSpec:
+    upn: str  # userPrincipalName
+    display_name: str
+    enabled: bool = True
+    last_sign_in_days_ago: int | None = 5
+    note: str = ""
+
+
+AZURE_USERS = [
+    AzureUserSpec(
+        "alice@example.com", "Alice Example",
+        note="4-way cross-source: AWS + GitHub + Google + Azure",
+    ),
+    AzureUserSpec(
+        "dave@example.com", "Dave Example",
+        note="3-way: AWS + GitHub + Azure (also in Google as inactive admin)",
+    ),
+    AzureUserSpec(
+        "raj@example.com", "Raj Patel",
+        last_sign_in_days_ago=200,
+        note="Azure-only, inactive long-term, surfaces ORPHANED-IDENTITY",
+    ),
+]
+
+
 GOOGLE_USERS = [
     GoogleUserSpec(
         "alice@example.com", "Alice Example",
@@ -376,6 +406,32 @@ def seed_google_routes(router) -> None:
     ).mock(return_value=httpx.Response(200, json={"users": users_json}))
 
 
+def _azure_user_json(spec: AzureUserSpec, idx: int) -> dict:
+    sign_in = None
+    if spec.last_sign_in_days_ago is not None:
+        sign_in = {
+            "lastSignInDateTime": _iso(
+                DEMO_NOW - timedelta(days=spec.last_sign_in_days_ago)
+            )
+        }
+    return {
+        "id": f"00000000-0000-4000-8000-{idx:012d}",
+        "displayName": spec.display_name,
+        "userPrincipalName": spec.upn,
+        "mail": spec.upn,
+        "accountEnabled": spec.enabled,
+        "createdDateTime": _iso(DEMO_NOW - timedelta(days=400)),
+        "signInActivity": sign_in,
+    }
+
+
+def seed_azure_routes(router) -> None:
+    users_json = [_azure_user_json(u, i) for i, u in enumerate(AZURE_USERS)]
+    router.route(
+        method="GET", host="graph.microsoft.com", path="/v1.0/users"
+    ).mock(return_value=httpx.Response(200, json={"value": users_json}))
+
+
 def seed_github_routes(router) -> None:
     """Register respx routes that serve the synthetic GitHub org.
 
@@ -468,6 +524,16 @@ def _render_github_seed() -> None:
         "legacy-deploy stale)[/dim]"
     )
     console.print(f"  [dim]●[/dim]  repo {GH_ORG}/infra [dim](no deploy keys)[/dim]")
+    console.print()
+
+
+def _render_azure_seed() -> None:
+    console.print("[bold][3a/5][/bold] Seeding Entra ID tenant...")
+    for u in AZURE_USERS:
+        status = "[dim]act  [/dim]" if u.enabled else "[red]DISA[/red]"
+        console.print(
+            f"  [dim]●[/dim]  {status} {u.upn:<22} [dim]({u.note})[/dim]"
+        )
     console.print()
 
 
@@ -625,9 +691,11 @@ def main() -> None:
         seed_aws(iam)
         seed_github_routes(gh_mock)
         seed_google_routes(gh_mock)
+        seed_azure_routes(gh_mock)
         _render_aws_seed()
         _render_github_seed()
         _render_google_seed()
+        _render_azure_seed()
 
         db.init_db(db_path)
         session = boto3.Session(
@@ -657,6 +725,13 @@ def main() -> None:
             ).run()
             run["records_collected"] = n_idp
         console.print(f"  [green]OK[/green] collected {n_idp} Google Workspace records")
+        console.print("       [dim]$[/dim] afterlife scan idp --provider azure")
+        with record_run(db_path, "azure") as run:
+            n_azure = AzureEntraIDCollector(
+                db_path=db_path, access_token="demo-token"
+            ).run()
+            run["records_collected"] = n_azure
+        console.print(f"  [green]OK[/green] collected {n_azure} Entra ID records")
         console.print()
 
         console.print(
