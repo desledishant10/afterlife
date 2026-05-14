@@ -7,6 +7,7 @@
 <title>{% block title %}Afterlife{% endblock %}</title>
 <link rel="stylesheet" href="/static/style.css">
 <script src="/static/htmx.min.js" defer></script>
+<script src="/static/app.js" defer></script>
 </head>
 <body>
 <nav>
@@ -19,5 +20,28 @@
 <main>
 {% block content %}{% endblock %}
 </main>
+
+<footer class="site">
+  <span>Local read-only dashboard. No data leaves this machine.</span>
+  <span>Press <kbd>?</kbd> for shortcuts</span>
+</footer>
+
+<aside class="kbd-hint" aria-hidden="true">
+  <kbd>/</kbd> search &middot; <kbd>?</kbd> shortcuts
+</aside>
+
+<dialog id="kbd-help" aria-label="Keyboard shortcuts">
+  <h3>Keyboard shortcuts</h3>
+  <dl>
+    <dt><kbd>/</kbd></dt><dd>Focus the search box</dd>
+    <dt><kbd>Esc</kbd></dt><dd>Blur input / close this dialog</dd>
+    <dt><kbd>?</kbd></dt><dd>Show / hide this dialog</dd>
+    <dt><kbd>g</kbd> <kbd>h</kbd></dt><dd>Go to Overview</dd>
+    <dt><kbd>g</kbd> <kbd>f</kbd></dt><dd>Go to Findings</dd>
+    <dt><kbd>g</kbd> <kbd>c</kbd></dt><dd>Go to Credentials</dd>
+    <dt><kbd>g</kbd> <kbd>i</kbd></dt><dd>Go to Identities</dd>
+  </dl>
+  <div class="close-row"><form method="dialog"><button>Close</button></form></div>
+</dialog>
 </body>
 </html>
