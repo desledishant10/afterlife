@@ -126,6 +126,7 @@ def create_app(db_path: Path) -> FastAPI:
         blast: str | None = Query(None),
         q: str | None = Query(None),
         show_suppressed: bool = Query(False),
+        sort: str = Query("severity"),
     ):
         all_findings = _load_findings(app.state.db_path)
         findings = list(all_findings)
@@ -147,14 +148,7 @@ def create_app(db_path: Path) -> FastAPI:
             needle = q.lower().strip()
             findings = [f for f in findings if _matches_query(f, needle)]
 
-        findings.sort(
-            key=lambda f: (
-                f.get("suppressed", False),
-                SEVERITY_ORDER.get(f["severity"], 99),
-                -((f.get("blast_radius") or {}).get("score") or 0.0),
-                f.get("detected_at") or "",
-            )
-        )
+        _sort_findings(findings, sort)
 
         rule_ids = sorted({f["rule_id"] for f in all_findings})
         suppressed_count = sum(1 for f in all_findings if f.get("suppressed"))
@@ -176,6 +170,7 @@ def create_app(db_path: Path) -> FastAPI:
                 "query": q or "",
                 "show_suppressed": show_suppressed,
                 "suppressed_count": suppressed_count,
+                "sort": sort,
             },
         )
 
@@ -222,6 +217,8 @@ def create_app(db_path: Path) -> FastAPI:
         cred_type: str | None = Query(None, alias="type"),
         active: str | None = Query(None),
         q: str | None = Query(None),
+        sort: str = Query("source"),
+        order: str = Query("asc"),
     ):
         creds = _load_credentials(app.state.db_path)
         all_creds = list(creds)
@@ -243,7 +240,7 @@ def create_app(db_path: Path) -> FastAPI:
                 or any(needle in (s or "").lower() for s in c.get("scopes") or [])
             ]
 
-        creds.sort(key=lambda c: (c["source"], c["credential_type"], c["credential_id"]))
+        _sort_credentials(creds, sort, order)
 
         sources = sorted({c["source"] for c in all_creds})
         types = sorted({c["credential_type"] for c in all_creds})
@@ -264,6 +261,8 @@ def create_app(db_path: Path) -> FastAPI:
                 "filter_type": cred_type,
                 "filter_active": active,
                 "query": q or "",
+                "sort": sort,
+                "order": order,
             },
         )
 
@@ -540,3 +539,56 @@ def _blast_label(blast: dict | None) -> str | None:
     if s >= 0.4:
         return "moderate"
     return "limited"
+
+
+def _sort_findings(findings: list[dict], sort_key: str) -> None:
+    """Sort findings in place by one of: severity, blast, newest, oldest, rule.
+
+    Suppressed findings always sink to the bottom regardless of sort, so a
+    reviewer doesn't have to scroll past triaged items.
+    """
+    suppressed = lambda f: f.get("suppressed", False)
+    blast_score = lambda f: -((f.get("blast_radius") or {}).get("score") or 0.0)
+    sev_rank = lambda f: SEVERITY_ORDER.get(f["severity"], 99)
+    detected = lambda f: f.get("detected_at") or ""
+
+    if sort_key == "blast":
+        findings.sort(key=lambda f: (suppressed(f), blast_score(f), sev_rank(f)))
+    elif sort_key == "newest":
+        findings.sort(key=lambda f: (suppressed(f), detected(f)), reverse=False)
+        # Reverse-detected: newest first, but keep suppressed at end.
+        findings.sort(
+            key=lambda f: (suppressed(f), -_iso_to_epoch(detected(f)))
+        )
+    elif sort_key == "oldest":
+        findings.sort(key=lambda f: (suppressed(f), _iso_to_epoch(detected(f))))
+    elif sort_key == "rule":
+        findings.sort(key=lambda f: (suppressed(f), f["rule_id"], sev_rank(f)))
+    else:  # default: severity, then blast desc, then time
+        findings.sort(
+            key=lambda f: (suppressed(f), sev_rank(f), blast_score(f), detected(f))
+        )
+
+
+def _sort_credentials(creds: list[dict], sort_key: str, order: str) -> None:
+    reverse = order == "desc"
+    keyfns = {
+        "source": lambda c: (c["source"], c["credential_type"], c["credential_id"]),
+        "type": lambda c: (c["credential_type"], c["credential_id"]),
+        "id": lambda c: c["credential_id"],
+        "owner": lambda c: (c.get("owner_id") or "").lower(),
+        "status": lambda c: (not c["is_active"], c["credential_id"]),
+    }
+    key_fn = keyfns.get(sort_key, keyfns["source"])
+    creds.sort(key=key_fn, reverse=reverse)
+
+
+def _iso_to_epoch(s: str) -> float:
+    """Best-effort ISO-8601 to a sortable float. Returns 0 for empty/invalid."""
+    if not s:
+        return 0.0
+    try:
+        from datetime import datetime
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+    except (ValueError, TypeError):
+        return 0.0

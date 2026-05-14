@@ -37,6 +37,15 @@
       </select>
     </label>
     <input type="search" name="q" value="{{ query }}" placeholder="Search title, description, credential id, owner..." aria-label="Search findings" class="search-input">
+    <label>Sort
+      <select name="sort" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+        <option value="severity" {% if sort == "severity" %}selected{% endif %}>Severity then blast (default)</option>
+        <option value="blast" {% if sort == "blast" %}selected{% endif %}>Blast radius</option>
+        <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest first</option>
+        <option value="oldest" {% if sort == "oldest" %}selected{% endif %}>Oldest first</option>
+        <option value="rule" {% if sort == "rule" %}selected{% endif %}>Rule id</option>
+      </select>
+    </label>
     <label>
       <input type="checkbox" name="show_suppressed" value="true" {% if show_suppressed %}checked{% endif %} onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
       Show suppressed{% if suppressed_count %} ({{ suppressed_count }}){% endif %}
