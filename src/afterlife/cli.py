@@ -55,6 +55,30 @@ def scan_github(
     console.print(f"[green]OK[/green] collected {n} GitHub records")
 
 
+@scan_app.command("gcp")
+def scan_gcp(
+    project: str = typer.Option(..., envvar="GCP_PROJECT"),
+    service_account_file: Path | None = typer.Option(
+        None,
+        envvar="GCP_SERVICE_ACCOUNT_JSON",
+        help="Path to a service account JSON with iam.serviceAccounts.list permission.",
+    ),
+    db_path: Path = DEFAULT_DB,
+) -> None:
+    """Pull service accounts and SA keys from one GCP project."""
+    from afterlife.collectors.gcp_iam import GCPIAMCollector
+    from afterlife.scan_runs import record_run
+
+    with record_run(db_path, "gcp") as run:
+        n = GCPIAMCollector(
+            db_path=db_path,
+            project=project,
+            service_account_file=service_account_file,
+        ).run()
+        run["records_collected"] = n
+    console.print(f"[green]OK[/green] collected {n} GCP records")
+
+
 @scan_app.command("gitlab")
 def scan_gitlab(
     token: str = typer.Option(..., envvar="GITLAB_TOKEN"),

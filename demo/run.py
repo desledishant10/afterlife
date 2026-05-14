@@ -31,6 +31,7 @@ from rich.table import Table
 from afterlife import db
 from afterlife.collectors.aws import AWSCollector
 from afterlife.collectors.azure_entra import AzureEntraIDCollector
+from afterlife.collectors.gcp_iam import GCPIAMCollector
 from afterlife.collectors.github import GitHubCollector
 from afterlife.collectors.gitlab import GitLabCollector
 from afterlife.collectors.google_workspace import GoogleWorkspaceCollector
@@ -216,6 +217,36 @@ GH_REPOS = [
     {"id": 1, "name": "main-app", "full_name": f"{GH_ORG}/main-app"},
     {"id": 2, "name": "infra", "full_name": f"{GH_ORG}/infra"},
 ]
+
+# ---------- GCP IAM seed specs ----------
+
+GCP_PROJECT = "demo-project"
+
+
+@dataclass
+class GCPServiceAccountSpec:
+    email_local: str
+    display_name: str
+    disabled: bool = False
+    keys_days_ago: tuple[int, ...] = ()  # one entry per key, days-since-creation
+    note: str = ""
+
+
+GCP_SAS = [
+    GCPServiceAccountSpec(
+        "ci-deploy", "CI Deployer", keys_days_ago=(200,),
+        note="key 200d old, fires UNROTATED-KEY",
+    ),
+    GCPServiceAccountSpec(
+        "data-pipeline", "Data Pipeline", keys_days_ago=(30,),
+        note="fresh key, clean",
+    ),
+    GCPServiceAccountSpec(
+        "legacy-bot", "Legacy Bot", disabled=True, keys_days_ago=(400,),
+        note="disabled, but key still exists",
+    ),
+]
+
 
 # ---------- GitLab seed specs ----------
 
@@ -472,6 +503,49 @@ def seed_azure_routes(router) -> None:
     ).mock(return_value=httpx.Response(200, json={"value": users_json}))
 
 
+def _gcp_sa_json(spec: GCPServiceAccountSpec) -> dict:
+    email = f"{spec.email_local}@{GCP_PROJECT}.iam.gserviceaccount.com"
+    return {
+        "name": f"projects/{GCP_PROJECT}/serviceAccounts/{email}",
+        "projectId": GCP_PROJECT,
+        "uniqueId": str(abs(hash(spec.email_local))),
+        "email": email,
+        "displayName": spec.display_name,
+        "disabled": spec.disabled,
+    }
+
+
+def _gcp_key_json(sa_email: str, idx: int, days_ago: int) -> dict:
+    return {
+        "name": f"projects/{GCP_PROJECT}/serviceAccounts/{sa_email}/keys/key-{idx:03d}",
+        "validAfterTime": _iso(DEMO_NOW - timedelta(days=days_ago)),
+        "validBeforeTime": _iso(DEMO_NOW + timedelta(days=365 * 10)),
+        "keyAlgorithm": "KEY_ALG_RSA_2048",
+        "keyType": "USER_MANAGED",
+        "keyOrigin": "GOOGLE_PROVIDED",
+    }
+
+
+def seed_gcp_routes(router) -> None:
+    sas_json = [_gcp_sa_json(sa) for sa in GCP_SAS]
+    router.route(
+        method="GET",
+        host="iam.googleapis.com",
+        path=f"/v1/projects/{GCP_PROJECT}/serviceAccounts",
+    ).mock(return_value=httpx.Response(200, json={"accounts": sas_json}))
+    for spec in GCP_SAS:
+        sa_email = f"{spec.email_local}@{GCP_PROJECT}.iam.gserviceaccount.com"
+        keys = [
+            _gcp_key_json(sa_email, i, days)
+            for i, days in enumerate(spec.keys_days_ago)
+        ]
+        router.route(
+            method="GET",
+            host="iam.googleapis.com",
+            path=f"/v1/projects/{GCP_PROJECT}/serviceAccounts/{sa_email}/keys",
+        ).mock(return_value=httpx.Response(200, json={"keys": keys}))
+
+
 def _gl_member_json(spec: GLMemberSpec, idx: int) -> dict:
     return {
         "id": 10000 + idx,
@@ -621,6 +695,18 @@ def _render_azure_seed() -> None:
         status = "[dim]act  [/dim]" if u.enabled else "[red]DISA[/red]"
         console.print(
             f"  [dim]●[/dim]  {status} {u.upn:<22} [dim]({u.note})[/dim]"
+        )
+    console.print()
+
+
+def _render_gcp_seed() -> None:
+    console.print("[bold][3c/5][/bold] Seeding GCP IAM project...")
+    for sa in GCP_SAS:
+        flag = "[red]disabled[/red]" if sa.disabled else "[dim]active  [/dim]"
+        keys = ", ".join(f"{d}d" for d in sa.keys_days_ago) or "none"
+        console.print(
+            f"  [dim]●[/dim]  {flag} {sa.email_local:<14} keys=[{keys}] "
+            f"[dim]({sa.note})[/dim]"
         )
     console.print()
 
@@ -795,11 +881,13 @@ def main() -> None:
         seed_google_routes(gh_mock)
         seed_azure_routes(gh_mock)
         seed_gitlab_routes(gh_mock)
+        seed_gcp_routes(gh_mock)
         _render_aws_seed()
         _render_github_seed()
         _render_google_seed()
         _render_azure_seed()
         _render_gitlab_seed()
+        _render_gcp_seed()
 
         db.init_db(db_path)
         session = boto3.Session(
@@ -843,6 +931,15 @@ def main() -> None:
             ).run()
             run["records_collected"] = n_gl
         console.print(f"  [green]OK[/green] collected {n_gl} GitLab records")
+        console.print("       [dim]$[/dim] afterlife scan gcp")
+        with record_run(db_path, "gcp") as run:
+            n_gcp = GCPIAMCollector(
+                db_path=db_path,
+                project=GCP_PROJECT,
+                access_token="demo-token",
+            ).run()
+            run["records_collected"] = n_gcp
+        console.print(f"  [green]OK[/green] collected {n_gcp} GCP records")
         console.print()
 
         console.print(

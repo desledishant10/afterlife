@@ -4,29 +4,35 @@ from afterlife.models import Finding, Severity
 from afterlife.rules.registry import rule
 
 
+ROTATABLE_TYPES = ("aws_access_key", "gcp_service_account_key")
+
+
 @rule(
     id="UNROTATED-KEY",
-    title="Long-lived AWS access key has not been rotated",
+    title="Long-lived static cloud credential has not been rotated",
     description=(
-        "An active AWS access key was created more than N days ago (default 180) and has "
-        "not been rotated. Long-lived static credentials are high-value targets: their "
-        "value persists indefinitely and compromise is often only caught by usage anomalies."
+        "An active static cloud credential (AWS access key, GCP service "
+        "account key) was created more than N days ago (default 180) and has "
+        "not been rotated. Long-lived static credentials are high-value "
+        "targets: their value persists indefinitely and compromise is often "
+        "only caught by usage anomalies, not key age."
     ),
     severity=Severity.MEDIUM,
 )
 def unrotated_key(conn, config, graph) -> list[Finding]:
     cutoff = datetime.now(timezone.utc) - timedelta(days=config.unrotated_key_days)
+    placeholders = ",".join("?" * len(ROTATABLE_TYPES))
     rows = conn.execute(
-        """
+        f"""
         SELECT source, credential_id, credential_type, owner_source, owner_id,
                created_at, last_used_at
         FROM credentials
         WHERE is_active = 1
-          AND credential_type = 'aws_access_key'
+          AND credential_type IN ({placeholders})
           AND created_at IS NOT NULL
           AND created_at < ?
         """,
-        (cutoff.isoformat(),),
+        (*ROTATABLE_TYPES, cutoff.isoformat()),
     ).fetchall()
 
     findings: list[Finding] = []

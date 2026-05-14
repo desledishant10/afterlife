@@ -102,9 +102,10 @@ it so future scans skip it.
 **Severity:** Medium
 **Status:** Implemented
 
-Active AWS access key with `created_at` older than `unrotated_key_days`
-(default 180). For an access key, `created_at` is effectively the last rotation
-timestamp; AWS doesn't rotate keys in place, you create a new key and delete
+Active static cloud credential (AWS access key, GCP service account key)
+with `created_at` older than `unrotated_key_days` (default 180). For these
+credential types, `created_at` is effectively the last rotation timestamp:
+neither AWS nor GCP rotates keys in place; you create a new key and delete
 the old.
 
 **Why it matters:** Long-lived static credentials are the highest-EV target for
