@@ -36,6 +36,7 @@ from afterlife.collectors.github import GitHubCollector
 from afterlife.collectors.gitlab import GitLabCollector
 from afterlife.collectors.google_workspace import GoogleWorkspaceCollector
 from afterlife.collectors.slack import SlackCollector
+from afterlife.collectors.vault import VaultCollector
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.reporting.html_report import write_html_report
 from afterlife.rules.registry import run_all
@@ -245,6 +246,35 @@ GCP_SAS = [
     GCPServiceAccountSpec(
         "legacy-bot", "Legacy Bot", disabled=True, keys_days_ago=(400,),
         note="disabled, but key still exists",
+    ),
+]
+
+
+# ---------- Vault seed specs ----------
+
+VAULT_ADDR = "https://vault.example.com:8200"
+
+
+@dataclass
+class VaultEntitySpec:
+    entity_id: str
+    name: str
+    email: str | None
+    aws_alias_arn: str | None = None
+    github_alias_login: str | None = None
+    note: str = ""
+
+
+VAULT_ENTITIES = [
+    VaultEntitySpec(
+        "ent-alice", "alice", "alice@example.com",
+        aws_alias_arn="arn:aws:iam::123456789012:user/alice",
+        github_alias_login="alice",
+        note="bridges Vault to AWS + GitHub via aliases",
+    ),
+    VaultEntitySpec(
+        "ent-deploy-bot", "deploy-bot", None,
+        note="Vault-only service entity",
     ),
 ]
 
@@ -532,6 +562,57 @@ def seed_azure_routes(router) -> None:
     ).mock(return_value=httpx.Response(200, json={"value": users_json}))
 
 
+def _vault_entity_json(spec: VaultEntitySpec) -> dict:
+    aliases = []
+    if spec.aws_alias_arn:
+        aliases.append(
+            {
+                "id": f"alias-aws-{spec.entity_id}",
+                "mount_type": "aws",
+                "mount_path": "aws/",
+                "name": spec.aws_alias_arn,
+            }
+        )
+    if spec.github_alias_login:
+        aliases.append(
+            {
+                "id": f"alias-gh-{spec.entity_id}",
+                "mount_type": "github",
+                "mount_path": "github/",
+                "name": spec.github_alias_login,
+            }
+        )
+    return {
+        "id": spec.entity_id,
+        "name": spec.name,
+        "creation_time": _iso(DEMO_NOW - timedelta(days=300)),
+        "last_update_time": _iso(DEMO_NOW - timedelta(days=10)),
+        "aliases": aliases,
+        "metadata": {"email": spec.email} if spec.email else {},
+    }
+
+
+def seed_vault_routes(router) -> None:
+    router.route(
+        method="GET",
+        host="vault.example.com",
+        path="/v1/identity/entity/id",
+    ).mock(
+        return_value=httpx.Response(
+            200,
+            json={"data": {"keys": [e.entity_id for e in VAULT_ENTITIES]}},
+        )
+    )
+    for spec in VAULT_ENTITIES:
+        router.route(
+            method="GET",
+            host="vault.example.com",
+            path=f"/v1/identity/entity/id/{spec.entity_id}",
+        ).mock(
+            return_value=httpx.Response(200, json={"data": _vault_entity_json(spec)})
+        )
+
+
 def _slack_user_json(spec: SlackUserSpec) -> dict:
     return {
         "id": spec.user_id,
@@ -761,6 +842,22 @@ def _render_azure_seed() -> None:
     console.print()
 
 
+def _render_vault_seed() -> None:
+    console.print("[bold][3e/5][/bold] Seeding Vault identity store...")
+    for e in VAULT_ENTITIES:
+        aliases = []
+        if e.aws_alias_arn:
+            aliases.append("aws")
+        if e.github_alias_login:
+            aliases.append("github")
+        alias_str = "+".join(aliases) if aliases else "none"
+        console.print(
+            f"  [dim]●[/dim]  [dim]ent  [/dim] {e.name:<12} aliases=({alias_str}) "
+            f"[dim]({e.note})[/dim]"
+        )
+    console.print()
+
+
 def _render_slack_seed() -> None:
     console.print("[bold][3d/5][/bold] Seeding Slack workspace...")
     for u in SLACK_USERS:
@@ -962,6 +1059,7 @@ def main() -> None:
         seed_gitlab_routes(gh_mock)
         seed_gcp_routes(gh_mock)
         seed_slack_routes(gh_mock)
+        seed_vault_routes(gh_mock)
         _render_aws_seed()
         _render_github_seed()
         _render_google_seed()
@@ -969,6 +1067,7 @@ def main() -> None:
         _render_gitlab_seed()
         _render_gcp_seed()
         _render_slack_seed()
+        _render_vault_seed()
 
         db.init_db(db_path)
         session = boto3.Session(
@@ -1028,6 +1127,15 @@ def main() -> None:
             ).run()
             run["records_collected"] = n_slack
         console.print(f"  [green]OK[/green] collected {n_slack} Slack records")
+        console.print("       [dim]$[/dim] afterlife scan vault")
+        with record_run(db_path, "vault") as run:
+            n_vault = VaultCollector(
+                db_path=db_path,
+                token="hvs.demo-token",
+                api_url=VAULT_ADDR,
+            ).run()
+            run["records_collected"] = n_vault
+        console.print(f"  [green]OK[/green] collected {n_vault} Vault records")
         console.print()
 
         console.print(

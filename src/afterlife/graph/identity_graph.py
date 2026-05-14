@@ -84,6 +84,7 @@ class IdentityGraph:
                     (cred.owner_source, cred.owner_id), []
                 ).append(cred)
         graph._link_by_email()
+        graph._link_by_vault_alias()
         return graph
 
     def _add_identity(self, identity: Identity) -> None:
@@ -102,6 +103,40 @@ class IdentityGraph:
             for i, a in enumerate(keys):
                 for b in keys[i + 1 :]:
                     self.g.add_edge(a, b, kind="email", email=email)
+
+    # Map Vault auth-method mount types to our internal source naming so an
+    # alias whose mount_type is "aws" links to an Identity row with source="aws".
+    _VAULT_MOUNT_TO_SOURCE: dict[str, str] = {
+        "aws": "aws",
+        "github": "github",
+        "gitlab": "gitlab",
+        "okta": "okta",
+        "azure": "azure",
+        "oidc": "google",  # Workspace-via-OIDC is the common pattern
+    }
+
+    def _link_by_vault_alias(self) -> None:
+        """For each Vault identity, add edges to identities whose source +
+        source_id match the alias's mount_type + name. This is the rare case
+        where the source system itself ships explicit cross-system links."""
+        for key, identity in self._identities.items():
+            if identity.source != "vault":
+                continue
+            for alias in (identity.metadata or {}).get("aliases", []):
+                target_source = self._VAULT_MOUNT_TO_SOURCE.get(
+                    (alias.get("mount_type") or "").lower()
+                )
+                target_name = alias.get("name")
+                if not target_source or not target_name:
+                    continue
+                target_key = (target_source, target_name)
+                if target_key in self._identities and target_key != key:
+                    self.g.add_edge(
+                        key,
+                        target_key,
+                        kind="vault_alias",
+                        mount=alias.get("mount_type"),
+                    )
 
     def persons(self) -> Iterator[Person]:
         for component in nx.connected_components(self.g):
