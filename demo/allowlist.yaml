@@ -1,0 +1,11 @@
+# Example allowlist showing how to suppress findings the team has already
+# triaged. Each entry must match at least one of: rule_id, credential_id,
+# identity_source, identity_id. All named fields are required to match.
+#
+# `until` is optional; if set, the suppression expires after that date.
+
+# ForgottenAuditRole is a yearly audit role; it never logs in but is
+# legitimately retained. Suppress NEVER-USED on it indefinitely.
+- rule_id: NEVER-USED
+  credential_id: arn:aws:iam::123456789012:role/ForgottenAuditRole
+  reason: Yearly audit role, intentionally dormant

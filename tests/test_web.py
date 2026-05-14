@@ -628,6 +628,50 @@ def test_nav_includes_credentials_tab(fresh_db):
     assert 'href="/credentials"' in r.text
 
 
+def test_suppressed_findings_hidden_by_default(fresh_db):
+    _seed(
+        fresh_db,
+        findings=[
+            Finding(
+                rule_id="A",
+                severity=Severity.HIGH,
+                title="visible-finding",
+                description="",
+            ),
+            Finding(
+                rule_id="B",
+                severity=Severity.HIGH,
+                title="hidden-suppressed-finding",
+                description="",
+                suppressed=True,
+                suppression_reason="break-glass",
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/findings")
+    assert "visible-finding" in r.text
+    assert "hidden-suppressed-finding" not in r.text
+
+
+def test_show_suppressed_query_param_unhides(fresh_db):
+    _seed(
+        fresh_db,
+        findings=[
+            Finding(
+                rule_id="B",
+                severity=Severity.HIGH,
+                title="hidden-suppressed-finding",
+                description="",
+                suppressed=True,
+                suppression_reason="break-glass",
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/findings?show_suppressed=true")
+    assert "hidden-suppressed-finding" in r.text
+    assert "break-glass" in r.text
+
+
 def test_app_js_served(fresh_db):
     client = _client(fresh_db)
     r = client.get("/static/app.js")

@@ -37,9 +37,13 @@
       </select>
     </label>
     <input type="search" name="q" value="{{ query }}" placeholder="Search title, description, credential id, owner..." aria-label="Search findings" class="search-input">
+    <label>
+      <input type="checkbox" name="show_suppressed" value="true" {% if show_suppressed %}checked{% endif %} onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+      Show suppressed{% if suppressed_count %} ({{ suppressed_count }}){% endif %}
+    </label>
     <span class="htmx-indicator"><span class="spinner"></span></span>
   </form>
-  {% if filter_severity or filter_rule or filter_blast or query %}
+  {% if filter_severity or filter_rule or filter_blast or query or show_suppressed %}
   <a class="clear" href="/findings">Clear filters</a>
   {% endif %}
 </div>

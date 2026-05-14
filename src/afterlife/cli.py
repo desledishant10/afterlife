@@ -89,16 +89,28 @@ def scan_idp(
 
 
 @app.command()
-def analyze(db_path: Path = DEFAULT_DB) -> None:
+def analyze(
+    db_path: Path = DEFAULT_DB,
+    allowlist: Path | None = typer.Option(
+        None, "--allowlist", "-a",
+        help="Path to a YAML allowlist of suppressions (see docs).",
+    ),
+) -> None:
     """Run all detection rules against collected data."""
     from afterlife.rules.registry import run_all
 
-    findings = run_all(db_path)
+    findings = run_all(db_path, allowlist_path=allowlist)
     by_severity: dict[str, int] = {}
+    suppressed_count = 0
     for f in findings:
+        if f.suppressed:
+            suppressed_count += 1
+            continue
         by_severity[f.severity.value] = by_severity.get(f.severity.value, 0) + 1
 
-    console.print(f"\n[bold]{len(findings)}[/bold] findings")
+    active_total = len(findings) - suppressed_count
+    console.print(f"\n[bold]{active_total}[/bold] active findings"
+                  f"{f' ({suppressed_count} suppressed)' if suppressed_count else ''}")
     for sev, color in (
         ("critical", "red"),
         ("high", "magenta"),

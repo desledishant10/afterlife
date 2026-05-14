@@ -265,6 +265,18 @@ details.finding.high { border-left-color: var(--high); }
 details.finding.medium { border-left-color: var(--medium); }
 details.finding.low { border-left-color: var(--low); }
 
+details.finding.suppressed {
+  opacity: 0.55;
+  border-left-color: var(--border-strong);
+}
+details.finding.suppressed:hover { opacity: 0.85; }
+details.finding.suppressed[open] { opacity: 1; }
+.badge.suppressed-badge {
+  background: var(--bg-subtle);
+  color: var(--muted);
+  border: 1px solid var(--border-strong);
+}
+
 details.finding summary {
   cursor: pointer;
   list-style: none;

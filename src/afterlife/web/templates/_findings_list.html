@@ -1,13 +1,17 @@
 {% if findings %}
   {% for f in findings %}
-  <details class="finding {{ f.severity }}">
+  <details class="finding {{ f.severity }}{% if f.suppressed %} suppressed{% endif %}">
     <summary>
       <span class="badge {{ f.severity }}">{{ f.severity }}</span>
       {% if f.blast_label %}<span class="blast {{ f.blast_label }}">{{ f.blast_label }}{% if f.blast_radius %} ({{ "%.2f"|format(f.blast_radius.score) }}){% endif %}</span>{% endif %}
+      {% if f.suppressed %}<span class="badge suppressed-badge">suppressed</span>{% endif %}
       <span>{{ f.title }}</span>
       <a class="rule-id" href="/findings/{{ f.id }}">#{{ f.id }} {{ f.rule_id }} →</a>
     </summary>
     <div class="body">
+      {% if f.suppressed and f.suppression_reason %}
+      <p class="factors"><b>Suppressed:</b> {{ f.suppression_reason }}</p>
+      {% endif %}
       <p>{{ f.description }}</p>
       {% if f.blast_radius %}
       <h4>Blast radius</h4>
