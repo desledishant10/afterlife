@@ -92,7 +92,7 @@ and `freezegun` (for backdating create timestamps).
 
 | Entity | Aliases | Effect |
 |---|---|---|
-| `alice` | `aws/arn:aws:iam::123456789012:user/alice` + `github/alice` | bridges Vault to AWS + GitHub without needing a shared email — links alice to 7 sources total |
+| `alice` | `aws/arn:aws:iam::123456789012:user/alice` + `github/alice` | bridges Vault to AWS + GitHub without needing a shared email; links alice to 7 sources total |
 | `deploy-bot` | none | Vault-only service entity |
 
 ## Expected output
@@ -133,7 +133,7 @@ server-side timestamps. To produce a deterministic demo:
 
 - Anything that requires a CloudTrail / audit-log source (PRIVILEGE-DRIFT,
   ROOT-USAGE, MFA-DOWNGRADE).
-- Real-world false positives — every planted credential is unambiguous so
+- Real-world false positives. Every planted credential is unambiguous so
   the expected output is fully reproducible.
 - A second AWS account (so CROSS-ACCOUNT-TRUST fires against a hard-coded
   external account number `999999999999`).

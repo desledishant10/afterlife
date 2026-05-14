@@ -110,12 +110,12 @@ choose based on consumer.
 
 `afterlife serve` launches a local FastAPI dashboard with seven pages:
 
-- **Overview** — severity tiles, blast-tier chart, last-scan-per-source.
-- **Findings** — filterable / searchable / sortable, expandable evidence + remediation, one-click `ack` per finding (state in localStorage), HTMX-powered live filtering.
-- **Credentials** — sortable table with source / type / active filters, click into per-credential detail.
-- **Identities** — person-grouped, filterable to cross-source only, click into per-person detail showing all linked identities + owned credentials + active findings.
-- **Finding / Credential / Person detail pages** — deep-linked, fully cross-referenced.
-- **Scan history** — every `afterlife scan ...` run with start/end/duration/status.
+- **Overview**: severity tiles, blast-tier chart, last-scan-per-source.
+- **Findings**: filterable, searchable, sortable, expandable evidence + remediation, one-click `ack` per finding (state in localStorage), HTMX-powered live filtering.
+- **Credentials**: sortable table with source / type / active filters, click into per-credential detail.
+- **Identities**: person-grouped, filterable to cross-source only, click into per-person detail showing all linked identities + owned credentials + active findings.
+- **Finding / Credential / Person detail pages**: deep-linked, fully cross-referenced.
+- **Scan history**: every `afterlife scan ...` run with start/end/duration/status.
 
 The dashboard is **read-only**: no DB writes, no auth, hardened with a strict
 CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
