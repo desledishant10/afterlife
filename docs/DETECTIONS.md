@@ -208,6 +208,29 @@ credentials. Audit how the contractor was originally given AWS access.
 
 ---
 
+## ADMIN-CONCENTRATION
+
+**Severity:** Critical
+**Status:** Implemented
+
+A single identity-graph person holds admin-equivalent access in two or more
+source systems. Today this means IdP `is_admin: True` (Google) plus an AWS
+credential with `AdministratorAccess` or `*:*` in its scopes, or two IdP
+admin flags on the same person.
+
+**Why it matters:** Splitting admin authority is the simplest defense against
+single-account compromise. When the same human is the Google super-admin AND
+the AWS account owner AND the GitHub org owner, a phishing of that human
+bypasses every system at once. Several public breach narratives include this
+pattern (Reddit 2023, Uber 2022 to a lesser extent).
+
+**Remediation:** Reduce admin scope: keep admin in the one system this
+person genuinely needs day-to-day; downgrade the rest. If cross-system
+admin is required, enforce 2-step verification everywhere and use a
+dedicated admin-only account distinct from the daily login.
+
+---
+
 ## CROSS-ACCOUNT-TRUST
 
 **Severity:** Critical

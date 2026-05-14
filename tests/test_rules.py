@@ -4,6 +4,7 @@ from afterlife import db
 from afterlife.config import Config
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.models import Credential, Identity
+from afterlife.rules.admin_concentration import admin_concentration
 from afterlife.rules.admin_without_mfa import admin_without_mfa
 from afterlife.rules.cross_account_trust import cross_account_trust
 from afterlife.rules.inactive_admin import inactive_admin
@@ -353,6 +354,140 @@ def test_unrotated_key_ignores_inactive_keys(fresh_db, now):
     assert findings == []
 
 
+# ---------- ADMIN-CONCENTRATION ----------
+
+
+def test_admin_concentration_fires_for_idp_admin_with_aws_admin_policy(fresh_db):
+    aws_arn = "arn:aws:iam::123:user/dave"
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-dave",
+                email="dave@example.com",
+                name="Dave",
+                status="active",
+                metadata={"is_admin": True},
+            ),
+        )
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="aws",
+                source_id=aws_arn,
+                email="dave@example.com",
+                name="Dave",
+                status="active",
+            ),
+        )
+        db.upsert_credential(
+            conn,
+            Credential(
+                source="aws",
+                credential_id="AKIA-DAVE",
+                credential_type="aws_access_key",
+                owner_source="aws",
+                owner_id=aws_arn,
+                scopes=["AdministratorAccess"],
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = admin_concentration(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+    assert set(findings[0].evidence["admin_sources"]) == {"google", "aws"}
+
+
+def test_admin_concentration_quiet_for_single_source_admin(fresh_db):
+    """Admin only in Google, no AWS admin policies = ADMIN-WITHOUT-MFA's job, not this one."""
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-solo",
+                email="solo@example.com",
+                name="Solo",
+                status="active",
+                metadata={"is_admin": True},
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = admin_concentration(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_admin_concentration_quiet_for_readonly_aws_link(fresh_db):
+    aws_arn = "arn:aws:iam::123:user/alice"
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-alice",
+                email="alice@example.com",
+                name="Alice",
+                status="active",
+                metadata={"is_admin": True},
+            ),
+        )
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="aws",
+                source_id=aws_arn,
+                email="alice@example.com",
+                name="Alice",
+                status="active",
+            ),
+        )
+        db.upsert_credential(
+            conn,
+            Credential(
+                source="aws",
+                credential_id="AKIA-ALICE",
+                credential_type="aws_access_key",
+                owner_source="aws",
+                owner_id=aws_arn,
+                scopes=["ReadOnlyAccess"],
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = admin_concentration(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_admin_concentration_fires_for_two_idp_admins(fresh_db):
+    """Same person is admin in both Google and Okta-style IdPs."""
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-1",
+                email="x@example.com",
+                name="X",
+                status="active",
+                metadata={"is_admin": True},
+            ),
+        )
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="okta",
+                source_id="o-1",
+                email="x@example.com",
+                name="X",
+                status="active",
+                metadata={"is_admin": True},
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = admin_concentration(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+    assert set(findings[0].evidence["admin_sources"]) == {"google", "okta"}
+
+
 # ---------- CROSS-ACCOUNT-TRUST ----------
 
 
@@ -500,6 +635,7 @@ def test_rule_registry_discovers_all_rules():
         "ADMIN-WITHOUT-MFA",
         "INACTIVE-ADMIN",
         "CROSS-ACCOUNT-TRUST",
+        "ADMIN-CONCENTRATION",
     }
 
 
