@@ -71,6 +71,9 @@ def run_all(
 
     findings: list[Finding] = []
     with db.connect(db_path) as conn:
+        # analyze replaces the prior finding set; we don't accumulate history
+        # in this table. Scan-run history lives in scan_runs.
+        conn.execute("DELETE FROM findings")
         graph = IdentityGraph.from_conn(conn)
         credential_index = _load_credential_index(conn)
         for r in _RULES:
