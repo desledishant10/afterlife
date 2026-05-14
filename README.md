@@ -115,15 +115,23 @@ choose based on consumer.
 <p>
   <img alt="Overview: severity tiles, blast tiers, identity-graph stats" src="docs/media/overview.png" width="320">
   <img alt="Findings list with filter, sort, suppression toggle"        src="docs/media/findings.png" width="320">
-  <img alt="Credentials table across all sources"                       src="docs/media/credentials.png" width="320">
+  <img alt="Identity graph: alice 7-way cross-source, suspended/archived statuses surfaced in red" src="docs/media/identities.png" width="320">
 </p>
 
 <details>
 <summary>More screenshots</summary>
 
-| Last scan per source + top findings | Findings (medium and low tiers, orphaned identities) |
+| Credentials across all sources | Overview, bottom (scan history + top findings) |
 |---|---|
-| <img alt="Overview, bottom half" src="docs/media/overview-detail.png" width="420"> | <img alt="Findings, more" src="docs/media/findings-more.png" width="420"> |
+| <img alt="Credentials"     src="docs/media/credentials.png"     width="420"> | <img alt="Overview, bottom" src="docs/media/overview-detail.png" width="420"> |
+
+| Findings (medium / low tiers) | Credentials, continued |
+|---|---|
+| <img alt="Findings, more"  src="docs/media/findings-more.png"   width="420"> | <img alt="Credentials, continued" src="docs/media/credentials-more.png" width="420"> |
+
+| Identities, mixed-source middle | Identities, single-source bottom (bots, no-email cases) |
+|---|---|
+| <img alt="Identities, middle" src="docs/media/identities-middle.png" width="420"> | <img alt="Identities, bottom" src="docs/media/identities-bottom.png" width="420"> |
 
 </details>
 
