@@ -6,7 +6,12 @@ from afterlife.rules.registry import rule
 # Credential types whose source system does not expose a usable last-used
 # signal. Without a usage signal we cannot distinguish "never used" from
 # "actively used but unobservable", so we skip them.
-TYPES_WITHOUT_USAGE_SIGNAL = ("github_app_installation",)
+TYPES_WITHOUT_USAGE_SIGNAL = (
+    "github_app_installation",
+    # GCP IAM doesn't expose key last-used on the standard endpoint; treating
+    # "no last_used" as "never used" would fire on every long-lived SA key.
+    "gcp_service_account_key",
+)
 
 
 @rule(
