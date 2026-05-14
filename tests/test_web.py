@@ -39,10 +39,17 @@ def test_overview_shows_severity_counts(fresh_db):
 
     r = _client(fresh_db).get("/")
     assert r.status_code == 200
-    # Two criticals, one high. The metric blocks render the count
-    # immediately next to the label span.
-    assert 'class="count">2</span>\n      <span class="label">Critical' in r.text
-    assert 'class="count">1</span>\n      <span class="label">High' in r.text
+    # Two criticals, one high. Counts render in <span class="count"> immediately
+    # followed (whitespace-separated) by a label span.
+    import re
+    crit_match = re.search(
+        r'class="count">2</span>\s*<span class="label">Critical', r.text
+    )
+    high_match = re.search(
+        r'class="count">1</span>\s*<span class="label">High', r.text
+    )
+    assert crit_match is not None
+    assert high_match is not None
 
 
 def test_findings_page_lists_all_findings(fresh_db):
@@ -223,3 +230,43 @@ def test_nav_marks_active_tab(fresh_db):
     r = client.get("/findings")
     # Active class marks the current tab in the nav
     assert 'class="tab active" href="/findings"' in r.text
+
+
+def test_security_headers_set_on_every_response(fresh_db):
+    client = _client(fresh_db)
+    for path in ["/", "/findings", "/identities", "/static/style.css"]:
+        r = client.get(path)
+        assert r.headers["X-Frame-Options"] == "DENY"
+        assert r.headers["X-Content-Type-Options"] == "nosniff"
+        assert r.headers["Referrer-Policy"] == "no-referrer"
+        assert "Content-Security-Policy" in r.headers
+        csp = r.headers["Content-Security-Policy"]
+        assert "default-src 'self'" in csp
+        assert "frame-ancestors 'none'" in csp
+        assert "object-src 'none'" in csp
+
+
+def test_openapi_and_docs_endpoints_disabled(fresh_db):
+    """The dashboard should not expose introspection surface."""
+    client = _client(fresh_db)
+    assert client.get("/openapi.json").status_code == 404
+    assert client.get("/docs").status_code == 404
+    assert client.get("/redoc").status_code == 404
+
+
+def test_static_assets_served(fresh_db):
+    client = _client(fresh_db)
+    css = client.get("/static/style.css")
+    assert css.status_code == 200
+    assert "metric" in css.text  # one of our class names
+    htmx = client.get("/static/htmx.min.js")
+    assert htmx.status_code == 200
+    assert "htmx" in htmx.text.lower()
+
+
+def test_static_path_traversal_blocked(fresh_db):
+    """StaticFiles must reject path traversal attempts."""
+    client = _client(fresh_db)
+    # Anything that escapes /static should 404, not return system files.
+    r = client.get("/static/../app.py")
+    assert r.status_code in (404, 400)
