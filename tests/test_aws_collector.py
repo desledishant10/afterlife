@@ -183,6 +183,84 @@ def test_rerun_is_idempotent(aws_env, fresh_db):
         ).fetchone()["n"] == 1
 
 
+def test_attached_user_policy_populates_credential_scopes(aws_env, fresh_db):
+    iam = aws_env.client("iam")
+    policy = iam.create_policy(
+        PolicyName="AdministratorAccess",
+        PolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [{"Effect": "Allow", "Action": "*", "Resource": "*"}],
+            }
+        ),
+    )
+    iam.create_user(UserName="alice")
+    iam.create_access_key(UserName="alice")
+    iam.attach_user_policy(UserName="alice", PolicyArn=policy["Policy"]["Arn"])
+
+    _run_collector(aws_env, fresh_db)
+
+    with db.connect(fresh_db) as conn:
+        row = conn.execute(
+            "SELECT scopes FROM credentials WHERE credential_type = 'aws_access_key'"
+        ).fetchone()
+        scopes = json.loads(row["scopes"])
+        assert "AdministratorAccess" in scopes
+
+
+def test_inline_user_policy_populates_scopes_with_prefix(aws_env, fresh_db):
+    iam = aws_env.client("iam")
+    iam.create_user(UserName="alice")
+    iam.create_access_key(UserName="alice")
+    iam.put_user_policy(
+        UserName="alice",
+        PolicyName="custom-s3",
+        PolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {"Effect": "Allow", "Action": "s3:*", "Resource": "*"}
+                ],
+            }
+        ),
+    )
+
+    _run_collector(aws_env, fresh_db)
+
+    with db.connect(fresh_db) as conn:
+        row = conn.execute(
+            "SELECT scopes FROM credentials WHERE credential_type = 'aws_access_key'"
+        ).fetchone()
+        scopes = json.loads(row["scopes"])
+        assert "inline:custom-s3" in scopes
+
+
+def test_attached_role_policy_populates_role_scopes(aws_env, fresh_db):
+    iam = aws_env.client("iam")
+    policy = iam.create_policy(
+        PolicyName="PowerUserAccess",
+        PolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {"Effect": "Allow", "NotAction": "iam:*", "Resource": "*"}
+                ],
+            }
+        ),
+    )
+    iam.create_role(RoleName="DeployRole", AssumeRolePolicyDocument=TRUST_POLICY)
+    iam.attach_role_policy(RoleName="DeployRole", PolicyArn=policy["Policy"]["Arn"])
+
+    _run_collector(aws_env, fresh_db)
+
+    with db.connect(fresh_db) as conn:
+        row = conn.execute(
+            "SELECT scopes FROM credentials WHERE credential_type = 'aws_iam_role'"
+        ).fetchone()
+        scopes = json.loads(row["scopes"])
+        assert "PowerUserAccess" in scopes
+
+
 def test_user_metadata_preserves_tags(aws_env, fresh_db):
     iam = aws_env.client("iam")
     iam.create_user(

@@ -74,6 +74,7 @@ class UserSpec:
     created_days_ago: int
     key_last_used_days_ago: int | None
     note: str
+    policies: tuple[str, ...] = ()
 
 
 @dataclass
@@ -81,20 +82,63 @@ class RoleSpec:
     name: str
     created_days_ago: int
     note: str
+    policies: tuple[str, ...] = ()
 
 
 AWS_USERS = [
-    UserSpec("alice", "alice@example.com", 30, 5, "fresh key, last used 5d ago"),
-    UserSpec("bob", "bob@example.com", 200, 120, "key 200d old, last used 120d ago"),
-    UserSpec("carol", "carol@example.com", 90, None, "key 90d old, never used"),
-    UserSpec("dave", "dave@example.com", 250, 5, "key 250d old, last used 5d ago"),
-    UserSpec("eve", "eve@example.com", 10, None, "key 10d old, never used (control)"),
+    UserSpec("alice", "alice@example.com", 30, 5,
+             "fresh key, last used 5d ago",
+             policies=("ReadOnlyAccess",)),
+    UserSpec("bob", "bob@example.com", 200, 120,
+             "key 200d old, last used 120d ago",
+             policies=("AdministratorAccess",)),
+    UserSpec("carol", "carol@example.com", 90, None,
+             "key 90d old, never used",
+             policies=("IAMFullAccess", "AmazonS3FullAccess")),
+    UserSpec("dave", "dave@example.com", 250, 5,
+             "key 250d old, last used 5d ago",
+             policies=("ReadOnlyAccess",)),
+    UserSpec("eve", "eve@example.com", 10, None,
+             "key 10d old, never used (control)",
+             policies=()),
 ]
 
 AWS_ROLES = [
-    RoleSpec("LegacyDeployRole", 300, "300d old, never assumed"),
-    RoleSpec("ForgottenAuditRole", 250, "250d old, never assumed"),
+    RoleSpec("LegacyDeployRole", 300, "300d old, never assumed",
+             policies=("PowerUserAccess",)),
+    RoleSpec("ForgottenAuditRole", 250, "250d old, never assumed",
+             policies=("ReadOnlyAccess",)),
 ]
+
+# Customer-managed-policy stand-ins (moto does not preload AWS managed
+# policies, so we create them under the demo account with the same names
+# so blast-radius scoring sees the realistic AdministratorAccess label).
+_DEMO_POLICY_DOCS = {
+    "AdministratorAccess": {
+        "Version": "2012-10-17",
+        "Statement": [{"Effect": "Allow", "Action": "*", "Resource": "*"}],
+    },
+    "PowerUserAccess": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {"Effect": "Allow", "NotAction": "iam:*", "Resource": "*"}
+        ],
+    },
+    "ReadOnlyAccess": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {"Effect": "Allow", "Action": ["s3:Get*", "s3:List*"], "Resource": "*"}
+        ],
+    },
+    "IAMFullAccess": {
+        "Version": "2012-10-17",
+        "Statement": [{"Effect": "Allow", "Action": "iam:*", "Resource": "*"}],
+    },
+    "AmazonS3FullAccess": {
+        "Version": "2012-10-17",
+        "Statement": [{"Effect": "Allow", "Action": "s3:*", "Resource": "*"}],
+    },
+}
 
 
 # ---------- GitHub seed specs ----------
@@ -232,6 +276,13 @@ def _backdate_key_last_used(account_id: str, user_name: str, days_ago: int) -> N
 
 
 def seed_aws(iam) -> None:
+    policy_arns = {
+        name: iam.create_policy(
+            PolicyName=name, PolicyDocument=json.dumps(doc)
+        )["Policy"]["Arn"]
+        for name, doc in _DEMO_POLICY_DOCS.items()
+    }
+
     for u in AWS_USERS:
         with freeze_time(DEMO_NOW - timedelta(days=u.created_days_ago)):
             iam.create_user(
@@ -239,6 +290,10 @@ def seed_aws(iam) -> None:
                 Tags=[{"Key": "email", "Value": u.email}],
             )
             iam.create_access_key(UserName=u.name)
+            for policy_name in u.policies:
+                iam.attach_user_policy(
+                    UserName=u.name, PolicyArn=policy_arns[policy_name]
+                )
         if u.key_last_used_days_ago is not None:
             _backdate_key_last_used(
                 MOTO_ACCOUNT_ID, u.name, u.key_last_used_days_ago
@@ -249,6 +304,10 @@ def seed_aws(iam) -> None:
                 RoleName=role.name,
                 AssumeRolePolicyDocument=TRUST_POLICY,
             )
+            for policy_name in role.policies:
+                iam.attach_role_policy(
+                    RoleName=role.name, PolicyArn=policy_arns[policy_name]
+                )
 
 
 def _gh_user_json(spec: GHMemberSpec) -> dict:
@@ -351,9 +410,15 @@ def _render_header() -> None:
 def _render_aws_seed() -> None:
     console.print("[bold][1/5][/bold] Seeding AWS environment...")
     for u in AWS_USERS:
-        console.print(f"  [dim]●[/dim]  {u.name:<8}  [dim]({u.note})[/dim]")
+        pols = (
+            f" [{'red' if 'AdministratorAccess' in u.policies else 'yellow' if any('FullAccess' in p for p in u.policies) else 'cyan'}]"
+            f"[{', '.join(u.policies) if u.policies else '-'}]"
+            f"[/]"
+        )
+        console.print(f"  [dim]●[/dim]  {u.name:<8}{pols} [dim]({u.note})[/dim]")
     for role in AWS_ROLES:
-        console.print(f"  [dim]●[/dim]  role:{role.name}  [dim]({role.note})[/dim]")
+        pols = f" [dim][{', '.join(role.policies) if role.policies else '-'}][/dim]"
+        console.print(f"  [dim]●[/dim]  role:{role.name}{pols} [dim]({role.note})[/dim]")
     console.print()
 
 
@@ -394,24 +459,41 @@ def _render_findings(findings) -> None:
     table = Table(show_header=True, header_style="bold", border_style="dim")
     table.add_column("Rule")
     table.add_column("Severity")
+    table.add_column("Blast")
     table.add_column("Target")
 
     severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-    for f in sorted(findings, key=lambda x: (severity_order[x.severity.value], x.rule_id)):
+    blast_styles = {"broad": "bold red", "moderate": "yellow", "limited": "cyan"}
+    for f in sorted(
+        findings,
+        key=lambda x: (
+            severity_order[x.severity.value],
+            -(x.blast_radius.score if x.blast_radius else 0.0),
+            x.rule_id,
+        ),
+    ):
         sev = f.severity.value
         target = f.evidence.get("credential_id", "?")
         if isinstance(target, str) and target.startswith("arn:aws:iam::"):
             target = target.split(":", 5)[-1]
         if isinstance(target, str) and target.startswith("deploy_key:"):
-            target = target.split(":", 1)[1]  # drop the "deploy_key:" prefix
+            target = target.split(":", 1)[1]
         extra = ""
         if f.rule_id == "UNUSED-CREDENTIAL":
             extra = f" (unused since {(f.evidence.get('last_used_at') or '?')[:10]})"
         elif f.rule_id in {"NEVER-USED", "UNROTATED-KEY"}:
             extra = f" (created {(f.evidence.get('created_at') or '?')[:10]})"
+
+        blast_cell = "-"
+        if f.blast_radius:
+            label = f.blast_radius.label
+            style = blast_styles.get(label, "white")
+            blast_cell = f"[{style}]{label} ({f.blast_radius.score:.2f})[/{style}]"
+
         table.add_row(
             f.rule_id,
             f"[{SEVERITY_STYLE[sev]}]{sev}[/{SEVERITY_STYLE[sev]}]",
+            blast_cell,
             f"{target}[dim]{extra}[/dim]",
         )
     console.print(table)

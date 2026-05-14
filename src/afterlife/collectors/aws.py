@@ -64,13 +64,36 @@ class AWSCollector(Collector):
     def _iter_users(self, iam) -> Iterator[dict[str, Any]]:
         for page in iam.get_paginator("list_users").paginate():
             for user in page["Users"]:
-                yield {**user, "Tags": self._user_tags(iam, user["UserName"])}
+                user_name = user["UserName"]
+                yield {
+                    **user,
+                    "Tags": self._user_tags(iam, user_name),
+                    "ScopePolicies": self._user_policies(iam, user_name),
+                }
 
     def _user_tags(self, iam, user_name: str) -> list[dict[str, str]]:
         tags: list[dict[str, str]] = []
         for page in iam.get_paginator("list_user_tags").paginate(UserName=user_name):
             tags.extend(page.get("Tags", []))
         return tags
+
+    def _user_policies(self, iam, user_name: str) -> list[str]:
+        """Attached managed + inline policy names for an IAM user.
+
+        Returns a flat list of scope strings used by blast-radius scoring.
+        Inline policies are prefixed `inline:` so scoring can distinguish
+        them if needed; for v0.1 both are treated as elevated signals.
+        """
+        scopes: list[str] = []
+        for page in iam.get_paginator("list_attached_user_policies").paginate(
+            UserName=user_name
+        ):
+            scopes.extend(p["PolicyName"] for p in page.get("AttachedPolicies", []))
+        for page in iam.get_paginator("list_user_policies").paginate(
+            UserName=user_name
+        ):
+            scopes.extend(f"inline:{n}" for n in page.get("PolicyNames", []))
+        return scopes
 
     def _iter_access_keys(self, iam, user_name: str) -> Iterator[dict[str, Any]]:
         for page in iam.get_paginator("list_access_keys").paginate(UserName=user_name):
@@ -80,7 +103,21 @@ class AWSCollector(Collector):
         for page in iam.get_paginator("list_roles").paginate():
             for role in page["Roles"]:
                 # list_roles omits RoleLastUsed; get_role fills it in
-                yield iam.get_role(RoleName=role["RoleName"])["Role"]
+                detail = iam.get_role(RoleName=role["RoleName"])["Role"]
+                detail["ScopePolicies"] = self._role_policies(iam, role["RoleName"])
+                yield detail
+
+    def _role_policies(self, iam, role_name: str) -> list[str]:
+        scopes: list[str] = []
+        for page in iam.get_paginator("list_attached_role_policies").paginate(
+            RoleName=role_name
+        ):
+            scopes.extend(p["PolicyName"] for p in page.get("AttachedPolicies", []))
+        for page in iam.get_paginator("list_role_policies").paginate(
+            RoleName=role_name
+        ):
+            scopes.extend(f"inline:{n}" for n in page.get("PolicyNames", []))
+        return scopes
 
     def _user_to_identity(self, user: dict[str, Any]) -> Identity:
         tags = {t["Key"]: t["Value"] for t in user.get("Tags") or []}
@@ -116,7 +153,7 @@ class AWSCollector(Collector):
             owner_id=user["Arn"],
             created_at=key.get("CreateDate"),
             last_used_at=info.get("LastUsedDate"),
-            scopes=[],
+            scopes=list(user.get("ScopePolicies") or []),
             is_active=(key.get("Status") == "Active"),
             metadata={
                 "user_name": user["UserName"],
@@ -136,7 +173,7 @@ class AWSCollector(Collector):
             owner_id=None,
             created_at=role.get("CreateDate"),
             last_used_at=last_used,
-            scopes=[],
+            scopes=list(role.get("ScopePolicies") or []),
             is_active=True,
             metadata={
                 "role_name": role["RoleName"],

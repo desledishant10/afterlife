@@ -20,15 +20,15 @@ make demo
 
 ### AWS
 
-| Resource | Age | Last used | Fires |
-|----------|-----|-----------|-------|
-| user `alice` | 30d | 5d ago | nothing (fresh) |
-| user `bob` | 200d | 120d ago | `UNUSED-CREDENTIAL`, `UNROTATED-KEY`, `OFFBOARDED-OWNER` |
-| user `carol` | 90d | never | `NEVER-USED`, `OFFBOARDED-OWNER` |
-| user `dave` | 250d | 5d ago | `UNROTATED-KEY` |
-| user `eve` | 10d | never | nothing (within grace period) |
-| role `LegacyDeployRole` | 300d | never | `NEVER-USED` |
-| role `ForgottenAuditRole` | 250d | never | `NEVER-USED` |
+| Resource | Age | Last used | Policies | Fires |
+|----------|-----|-----------|----------|-------|
+| user `alice` | 30d | 5d ago | `ReadOnlyAccess` | nothing (fresh) |
+| user `bob` | 200d | 120d ago | `AdministratorAccess` | `UNUSED-CREDENTIAL`, `UNROTATED-KEY`, `OFFBOARDED-OWNER` (broad blast) |
+| user `carol` | 90d | never | `IAMFullAccess`, `AmazonS3FullAccess` | `NEVER-USED`, `OFFBOARDED-OWNER` (broad blast) |
+| user `dave` | 250d | 5d ago | `ReadOnlyAccess` | `UNROTATED-KEY` (moderate blast) |
+| user `eve` | 10d | never | (none) | nothing (within grace period) |
+| role `LegacyDeployRole` | 300d | never | `PowerUserAccess` | `NEVER-USED` (broad blast) |
+| role `ForgottenAuditRole` | 250d | never | `ReadOnlyAccess` | `NEVER-USED` (limited blast) |
 
 ### GitHub
 
