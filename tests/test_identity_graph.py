@@ -137,6 +137,137 @@ def test_person_for_unknown_returns_none(fresh_db):
     assert graph.person_for("aws", "does-not-exist") is None
 
 
+def test_vault_alias_links_to_matching_aws_identity(fresh_db):
+    """A Vault entity whose alias names an AWS ARN should be linked to that
+    AWS identity, even if their emails don't match."""
+    _seed(
+        fresh_db,
+        [
+            Identity(
+                source="aws",
+                source_id="arn:aws:iam::123:user/alice",
+                email=None,
+                name="alice",
+                status="active",
+            ),
+            Identity(
+                source="vault",
+                source_id="ent-1",
+                email=None,
+                name="alice",
+                status="active",
+                metadata={
+                    "aliases": [
+                        {
+                            "mount_type": "aws",
+                            "name": "arn:aws:iam::123:user/alice",
+                        }
+                    ]
+                },
+            ),
+        ],
+    )
+    graph = IdentityGraph.from_db(fresh_db)
+    persons = list(graph.persons())
+    assert len(persons) == 1
+    assert persons[0].is_cross_source
+    assert {i.source for i in persons[0].identities} == {"aws", "vault"}
+
+
+def test_vault_alias_links_to_matching_github_login(fresh_db):
+    _seed(
+        fresh_db,
+        [
+            Identity(
+                source="github",
+                source_id="alice",
+                email=None,
+                name="alice",
+                status="active",
+            ),
+            Identity(
+                source="vault",
+                source_id="ent-1",
+                email=None,
+                name="alice",
+                status="active",
+                metadata={
+                    "aliases": [
+                        {"mount_type": "github", "name": "alice"}
+                    ]
+                },
+            ),
+        ],
+    )
+    graph = IdentityGraph.from_db(fresh_db)
+    persons = list(graph.persons())
+    assert len(persons) == 1
+    assert persons[0].is_cross_source
+
+
+def test_vault_alias_with_no_matching_identity_stays_unlinked(fresh_db):
+    """Alias points at a principal we don't have a record of -> no edge added.
+    The Vault entity is still its own person."""
+    _seed(
+        fresh_db,
+        [
+            Identity(
+                source="vault",
+                source_id="ent-1",
+                email=None,
+                name="alice",
+                status="active",
+                metadata={
+                    "aliases": [
+                        {
+                            "mount_type": "aws",
+                            "name": "arn:aws:iam::999:user/ghost",
+                        }
+                    ]
+                },
+            ),
+        ],
+    )
+    graph = IdentityGraph.from_db(fresh_db)
+    persons = list(graph.persons())
+    assert len(persons) == 1
+    assert not persons[0].is_cross_source
+
+
+def test_vault_alias_chain_links_aws_and_github_via_one_entity(fresh_db):
+    """One Vault entity bridges AWS + GitHub even without shared email."""
+    _seed(
+        fresh_db,
+        [
+            Identity(
+                source="aws",
+                source_id="arn:aws:iam::123:user/alice",
+                email=None, name="alice", status="active",
+            ),
+            Identity(
+                source="github",
+                source_id="alice",
+                email=None, name="alice", status="active",
+            ),
+            Identity(
+                source="vault",
+                source_id="ent-1",
+                email=None, name="alice", status="active",
+                metadata={
+                    "aliases": [
+                        {"mount_type": "aws", "name": "arn:aws:iam::123:user/alice"},
+                        {"mount_type": "github", "name": "alice"},
+                    ]
+                },
+            ),
+        ],
+    )
+    graph = IdentityGraph.from_db(fresh_db)
+    persons = list(graph.persons())
+    assert len(persons) == 1
+    assert {i.source for i in persons[0].identities} == {"aws", "github", "vault"}
+
+
 def test_credentials_for_person_aggregates_across_sources(fresh_db):
     _seed(
         fresh_db,

@@ -55,6 +55,32 @@ def scan_github(
     console.print(f"[green]OK[/green] collected {n} GitHub records")
 
 
+@scan_app.command("vault")
+def scan_vault(
+    token: str = typer.Option(..., envvar="VAULT_TOKEN"),
+    api_url: str = typer.Option(..., envvar="VAULT_ADDR",
+                                help="Base URL of the Vault server."),
+    namespace: str | None = typer.Option(
+        None, envvar="VAULT_NAMESPACE",
+        help="Vault Enterprise namespace (optional).",
+    ),
+    db_path: Path = DEFAULT_DB,
+) -> None:
+    """Pull identity entities and their cross-system aliases from Vault."""
+    from afterlife.collectors.vault import VaultCollector
+    from afterlife.scan_runs import record_run
+
+    with record_run(db_path, "vault") as run:
+        n = VaultCollector(
+            db_path=db_path,
+            token=token,
+            api_url=api_url,
+            namespace=namespace,
+        ).run()
+        run["records_collected"] = n
+    console.print(f"[green]OK[/green] collected {n} Vault records")
+
+
 @scan_app.command("slack")
 def scan_slack(
     token: str = typer.Option(..., envvar="SLACK_TOKEN"),
