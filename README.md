@@ -110,7 +110,24 @@ choose based on consumer.
 
 ## Web dashboard
 
-`afterlife serve` launches a local FastAPI dashboard with seven pages:
+`afterlife serve` launches a local FastAPI dashboard with seven pages.
+
+<p>
+  <img alt="Overview"       src="docs/media/overview.png"           width="320">
+  <img alt="Critical findings" src="docs/media/findings-critical.png" width="320">
+  <img alt="Person detail"  src="docs/media/person-detail.png"      width="320">
+</p>
+
+<details>
+<summary>More screenshots</summary>
+
+| Finding detail | Cross-source identities |
+|---|---|
+| <img alt="Finding detail" src="docs/media/finding-detail.png" width="420"> | <img alt="Identities" src="docs/media/identities.png" width="420"> |
+
+</details>
+
+The pages:
 
 - **Overview**: severity tiles, blast-tier chart, last-scan-per-source.
 - **Findings**: filterable, searchable, sortable, expandable evidence + remediation, one-click `ack` per finding (state in localStorage), HTMX-powered live filtering.
