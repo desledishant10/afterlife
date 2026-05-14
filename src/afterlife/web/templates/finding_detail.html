@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Afterlife: {{ finding.title }}{% endblock %}
+{% block content %}
+
+<div class="breadcrumbs">
+  <a href="/findings">Findings</a>
+  <span class="sep">›</span>
+  <span>#{{ finding.id }}</span>
+</div>
+
+<h1>
+  <span class="badge {{ finding.severity }}">{{ finding.severity }}</span>
+  {% if finding.blast_label %}<span class="blast {{ finding.blast_label }}">{{ finding.blast_label }}{% if finding.blast_radius %} ({{ "%.2f"|format(finding.blast_radius.score) }}){% endif %}</span>{% endif %}
+  {{ finding.title }}
+</h1>
+<p class="meta">{{ finding.rule_id }} &middot; detected {{ finding.detected_at[:19] if finding.detected_at else "?" }}</p>
+
+<div class="card">
+  <p>{{ finding.description }}</p>
+</div>
+
+{% if finding.blast_radius %}
+<div class="section-title">
+  <h2>Blast radius</h2>
+  <span class="count">score {{ "%.2f"|format(finding.blast_radius.score) }} ({{ finding.blast_label }})</span>
+</div>
+<div class="card">
+  <ul>
+    {% for factor in finding.blast_radius.factors %}
+    <li>{{ factor }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if person %}
+<h2>Owner</h2>
+<a class="row-link" href="/persons/{{ person.identities[0].source }}/{{ person.identities[0].source_id }}">
+  <div class="person{% if person.is_cross_source %} cross-source{% endif %}">
+    <div class="person-header">
+      {% if person.canonical_email %}
+        {{ person.canonical_email }}
+      {% else %}
+        {{ person.identities[0].name or person.identities[0].source_id }}
+      {% endif %}
+      {% if person.is_cross_source %}<span class="person-tag">cross-source</span>{% endif %}
+    </div>
+    {% for identity in person.identities %}
+    <div class="identity-row">
+      <span class="src">{{ identity.source }}</span>
+      {{ identity.source_id }}
+      <span class="status-{{ identity.status }}">({{ identity.status }})</span>
+    </div>
+    {% endfor %}
+  </div>
+</a>
+{% endif %}
+
+{% if credential %}
+<h2>Credential</h2>
+<a class="row-link" href="/credentials/{{ credential.source }}/{{ credential.credential_id }}">
+  <div class="card linkable">
+    <div class="person-header">{{ credential.credential_id }}</div>
+    <dl class="kv-grid" style="margin-top: 0.5rem;">
+      <dt>Type</dt><dd>{{ credential.credential_type }}</dd>
+      <dt>Source</dt><dd>{{ credential.source }}</dd>
+      <dt>Status</dt><dd class="plain">
+        {% if credential.is_active %}<span class="tag active">active</span>{% else %}<span class="tag inactive">inactive</span>{% endif %}
+      </dd>
+      {% if credential.scopes %}
+      <dt>Scopes</dt><dd class="plain">{% for s in credential.scopes %}<span class="tag">{{ s }}</span>{% endfor %}</dd>
+      {% endif %}
+    </dl>
+  </div>
+</a>
+{% endif %}
+
+<h2>Evidence</h2>
+<div class="card">
+  <pre>{{ finding.evidence_pretty }}</pre>
+</div>
+
+{% if finding.suggested_remediation %}
+<h2>Suggested remediation</h2>
+<div class="card">
+  <p>{{ finding.suggested_remediation }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

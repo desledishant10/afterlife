@@ -6,42 +6,25 @@
 <p class="meta">{{ total_persons }} persons across {{ sources|length }} source(s). <b>{{ cross_source_count }}</b> cross-source.</p>
 
 <div class="filter-bar">
-  <form method="get" action="/identities">
+  <form method="get" action="/identities"
+        hx-get="/identities"
+        hx-target="#identities-list"
+        hx-trigger="change, search delay:300ms from:input[type=search]"
+        hx-push-url="true">
     <label>
-      <input type="checkbox" name="cross_source_only" value="true" {% if cross_source_only %}checked{% endif %} onchange="this.form.submit()">
-      Show only cross-source persons
+      <input type="checkbox" name="cross_source_only" value="true" {% if cross_source_only %}checked{% endif %} onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+      Cross-source only
     </label>
+    <input type="search" name="q" value="{{ query }}" placeholder="Search email, name, source id..." aria-label="Search persons" class="search-input">
+    <span class="htmx-indicator"><span class="spinner"></span></span>
   </form>
+  {% if cross_source_only or query %}
+  <a class="clear" href="/identities">Clear filters</a>
+  {% endif %}
 </div>
 
-{% if persons %}
-  {% for person in persons %}
-  <div class="person{% if person.is_cross_source %} cross-source{% endif %}">
-    <div class="person-header">
-      {% if person.canonical_email %}
-        {{ person.canonical_email }}
-      {% else %}
-        {{ person.identities[0].name or person.identities[0].source_id }} <em>(no email)</em>
-      {% endif %}
-      {% if person.is_cross_source %}<span class="person-tag">cross-source</span>{% endif %}
-    </div>
-    {% for identity in person.identities %}
-    <div class="identity-row">
-      <span class="src">{{ identity.source }}</span>
-      {{ identity.source_id }}
-      <span class="status-{{ identity.status }}">({{ identity.status }})</span>
-    </div>
-    {% endfor %}
-  </div>
-  {% endfor %}
-{% else %}
-  <div class="empty">
-    {% if cross_source_only %}
-      No cross-source persons. Try removing the filter, or scan more sources.
-    {% else %}
-      No identities collected yet. Run `afterlife scan ...` against a populated DB.
-    {% endif %}
-  </div>
-{% endif %}
+<div id="identities-list">
+{% include "_identities_list.html" %}
+</div>
 
 {% endblock %}

@@ -1,0 +1,27 @@
+{% if persons %}
+  {% for person in persons %}
+  <a class="row-link" href="/persons/{{ person.identities[0].source }}/{{ person.identities[0].source_id }}">
+    <div class="person{% if person.is_cross_source %} cross-source{% endif %}">
+      <div class="person-header">
+        {% if person.canonical_email %}
+          {{ person.canonical_email }}
+        {% else %}
+          {{ person.identities[0].name or person.identities[0].source_id }} <em>(no email)</em>
+        {% endif %}
+        {% if person.is_cross_source %}<span class="person-tag">cross-source</span>{% endif %}
+      </div>
+      {% for identity in person.identities %}
+      <div class="identity-row">
+        <span class="src">{{ identity.source }}</span>
+        {{ identity.source_id }}
+        <span class="status-{{ identity.status }}">({{ identity.status }})</span>
+      </div>
+      {% endfor %}
+    </div>
+  </a>
+  {% endfor %}
+{% else %}
+  <div class="empty">
+    No persons match the current filters.
+  </div>
+{% endif %}

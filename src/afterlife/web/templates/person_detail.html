@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Afterlife: {{ person.canonical_email or person.identities[0].source_id }}{% endblock %}
+{% block content %}
+
+<div class="breadcrumbs">
+  <a href="/identities">Identities</a>
+  <span class="sep">›</span>
+  <span>{{ person.canonical_email or "person" }}</span>
+</div>
+
+<h1>
+  {% if person.canonical_email %}{{ person.canonical_email }}{% else %}{{ person.identities[0].name or person.identities[0].source_id }}{% endif %}
+  {% if person.is_cross_source %}<span class="person-tag">cross-source</span>{% endif %}
+</h1>
+<p class="meta">{{ person.identities|length }} identity record(s) across {{ person.sources|length }} source(s).</p>
+
+<h2>Identities</h2>
+<div class="card">
+  {% for identity in person.identities %}
+  <div class="identity-row">
+    <span class="src">{{ identity.source }}</span>
+    {{ identity.source_id }}
+    <span class="status-{{ identity.status }}">({{ identity.status }})</span>
+    {% if identity.email and identity.email != person.canonical_email %}
+      <span class="muted">— {{ identity.email }}</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="section-title">
+  <h2>Owned credentials</h2>
+  <span class="count">{{ credentials|length }}</span>
+</div>
+{% if credentials %}
+<table class="list">
+  <thead>
+    <tr>
+      <th>Source</th>
+      <th>Type</th>
+      <th>ID</th>
+      <th>Scopes</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in credentials %}
+    <tr>
+      <td>{{ c.source }}</td>
+      <td class="mono">{{ c.credential_type }}</td>
+      <td class="mono"><a href="/credentials/{{ c.source }}/{{ c.credential_id }}">{{ c.credential_id }}</a></td>
+      <td>
+        {% if c.scopes %}
+          {% for s in c.scopes[:3] %}<span class="tag">{{ s }}</span>{% endfor %}
+          {% if c.scopes|length > 3 %}<span class="tag muted">+{{ c.scopes|length - 3 }}</span>{% endif %}
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if c.is_active %}<span class="tag active">active</span>{% else %}<span class="tag inactive">inactive</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No credentials owned by this person.</div>
+{% endif %}
+
+<div class="section-title">
+  <h2>Findings</h2>
+  <span class="count">{{ findings|length }} linked</span>
+</div>
+{% if findings %}
+  {% for f in findings %}
+  <details class="finding {{ f.severity }}">
+    <summary>
+      <span class="badge {{ f.severity }}">{{ f.severity }}</span>
+      {% if f.blast_label %}<span class="blast {{ f.blast_label }}">{{ f.blast_label }}</span>{% endif %}
+      <span>{{ f.title }}</span>
+      <a class="rule-id" href="/findings/{{ f.id }}">#{{ f.id }} {{ f.rule_id }}</a>
+    </summary>
+    <div class="body">
+      <p>{{ f.description }}</p>
+      {% if f.suggested_remediation %}
+      <p class="factors">{{ f.suggested_remediation }}</p>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+{% else %}
+  <div class="empty">No findings linked to this person.</div>
+{% endif %}
+
+{% endblock %}

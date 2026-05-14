@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from afterlife import db
-from afterlife.models import BlastRadius, Finding, Identity, Severity
+from afterlife.models import BlastRadius, Credential, Finding, Identity, Severity
 from afterlife.web import create_app
 
 
@@ -9,12 +9,19 @@ def _client(db_path):
     return TestClient(create_app(db_path))
 
 
-def _seed(db_path, *, identities=(), findings=()):
+def _seed(db_path, *, identities=(), credentials=(), findings=()):
     with db.connect(db_path) as conn:
         for i in identities:
             db.upsert_identity(conn, i)
+        for c in credentials:
+            db.upsert_credential(conn, c)
         for f in findings:
             db.insert_finding(conn, f)
+
+
+def _last_finding_id(db_path):
+    with db.connect(db_path) as conn:
+        return conn.execute("SELECT MAX(id) AS id FROM findings").fetchone()["id"]
 
 
 def test_overview_renders_with_empty_db(fresh_db):
@@ -270,3 +277,352 @@ def test_static_path_traversal_blocked(fresh_db):
     # Anything that escapes /static should 404, not return system files.
     r = client.get("/static/../app.py")
     assert r.status_code in (404, 400)
+
+
+def test_finding_detail_renders(fresh_db):
+    _seed(
+        fresh_db,
+        findings=[
+            Finding(
+                rule_id="OFFBOARDED-OWNER",
+                severity=Severity.CRITICAL,
+                title="bob aws key still active",
+                description="bob is suspended in google",
+                evidence={"credential_id": "AKIA-BOB", "owner_email": "bob@example.com"},
+                suggested_remediation="Revoke AKIA-BOB.",
+                blast_radius=BlastRadius(score=0.85, factors=["admin"]),
+            )
+        ],
+    )
+    fid = _last_finding_id(fresh_db)
+    r = _client(fresh_db).get(f"/findings/{fid}")
+    assert r.status_code == 200
+    assert "bob aws key still active" in r.text
+    assert "AKIA-BOB" in r.text
+    assert "Revoke AKIA-BOB" in r.text
+    assert "broad" in r.text  # blast label
+
+
+def test_finding_detail_404_for_missing(fresh_db):
+    r = _client(fresh_db).get("/findings/999")
+    assert r.status_code == 404
+
+
+def test_credentials_list_shows_credentials(fresh_db):
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="aws",
+                credential_id="AKIA-1",
+                credential_type="aws_access_key",
+                owner_source="aws",
+                owner_id="arn:1",
+                scopes=["AdministratorAccess"],
+            ),
+            Credential(
+                source="github",
+                credential_id="deploy_key:test/repo:1",
+                credential_type="github_deploy_key",
+                scopes=["read", "write"],
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/credentials")
+    assert r.status_code == 200
+    assert "AKIA-1" in r.text
+    assert "deploy_key:test/repo:1" in r.text
+    assert "AdministratorAccess" in r.text
+
+
+def test_credentials_source_filter(fresh_db):
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="aws", credential_id="AKIA-1", credential_type="aws_access_key"
+            ),
+            Credential(
+                source="github",
+                credential_id="deploy_key:r:1",
+                credential_type="github_deploy_key",
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/credentials?source=github")
+    assert "deploy_key:r:1" in r.text
+    assert "AKIA-1" not in r.text
+
+
+def test_credentials_search_matches_scope(fresh_db):
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="aws",
+                credential_id="AKIA-ADMIN",
+                credential_type="aws_access_key",
+                scopes=["AdministratorAccess"],
+            ),
+            Credential(
+                source="aws",
+                credential_id="AKIA-RO",
+                credential_type="aws_access_key",
+                scopes=["ReadOnlyAccess"],
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/credentials?q=administrator")
+    assert "AKIA-ADMIN" in r.text
+    assert "AKIA-RO" not in r.text
+
+
+def test_credential_detail_renders(fresh_db):
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="aws",
+                credential_id="AKIA-BOB",
+                credential_type="aws_access_key",
+                owner_source="aws",
+                owner_id="arn:aws:iam::123:user/bob",
+                scopes=["AdministratorAccess"],
+            )
+        ],
+    )
+    r = _client(fresh_db).get("/credentials/aws/AKIA-BOB")
+    assert r.status_code == 200
+    assert "AKIA-BOB" in r.text
+    assert "AdministratorAccess" in r.text
+
+
+def test_credential_detail_with_path_in_id(fresh_db):
+    """Deploy key IDs contain slashes; the :path converter must accept them."""
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="github",
+                credential_id="deploy_key:test-org/main-app:902",
+                credential_type="github_deploy_key",
+                scopes=["read"],
+            )
+        ],
+    )
+    r = _client(fresh_db).get(
+        "/credentials/github/deploy_key:test-org/main-app:902"
+    )
+    assert r.status_code == 200
+    assert "deploy_key:test-org/main-app:902" in r.text
+
+
+def test_credential_detail_404_for_missing(fresh_db):
+    r = _client(fresh_db).get("/credentials/aws/nonexistent")
+    assert r.status_code == 404
+
+
+def test_credential_detail_shows_findings(fresh_db):
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="aws",
+                credential_id="AKIA-X",
+                credential_type="aws_access_key",
+            )
+        ],
+        findings=[
+            Finding(
+                rule_id="UNUSED-CREDENTIAL",
+                severity=Severity.HIGH,
+                title="stale key here",
+                description="...",
+                evidence={"credential_id": "AKIA-X"},
+            )
+        ],
+    )
+    r = _client(fresh_db).get("/credentials/aws/AKIA-X")
+    assert "stale key here" in r.text
+
+
+def test_person_detail_renders(fresh_db):
+    _seed(
+        fresh_db,
+        identities=[
+            Identity(
+                source="aws",
+                source_id="arn:aws:iam::123:user/alice",
+                email="alice@example.com",
+                name="Alice",
+                status="active",
+            ),
+            Identity(
+                source="google",
+                source_id="g1",
+                email="alice@example.com",
+                name="Alice",
+                status="suspended",
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/persons/google/g1")
+    assert r.status_code == 200
+    assert "alice@example.com" in r.text
+    assert "status-suspended" in r.text
+    assert "Owned credentials" in r.text
+
+
+def test_person_detail_404_for_missing(fresh_db):
+    r = _client(fresh_db).get("/persons/google/missing")
+    assert r.status_code == 404
+
+
+def test_person_detail_with_slashed_source_id(fresh_db):
+    """AWS ARNs contain slashes."""
+    _seed(
+        fresh_db,
+        identities=[
+            Identity(
+                source="aws",
+                source_id="arn:aws:iam::123456789012:user/alice",
+                email="alice@example.com",
+                name="alice",
+                status="active",
+            )
+        ],
+    )
+    r = _client(fresh_db).get(
+        "/persons/aws/arn:aws:iam::123456789012:user/alice"
+    )
+    assert r.status_code == 200
+    assert "alice@example.com" in r.text
+
+
+def test_person_detail_lists_owned_credentials_and_findings(fresh_db):
+    aws_arn = "arn:aws:iam::123:user/bob"
+    _seed(
+        fresh_db,
+        identities=[
+            Identity(
+                source="aws",
+                source_id=aws_arn,
+                email="bob@example.com",
+                name="bob",
+                status="active",
+            ),
+            Identity(
+                source="google",
+                source_id="g-bob",
+                email="bob@example.com",
+                name="Bob",
+                status="suspended",
+            ),
+        ],
+        credentials=[
+            Credential(
+                source="aws",
+                credential_id="AKIA-BOB",
+                credential_type="aws_access_key",
+                owner_source="aws",
+                owner_id=aws_arn,
+                scopes=["AdministratorAccess"],
+            )
+        ],
+        findings=[
+            Finding(
+                rule_id="OFFBOARDED-OWNER",
+                severity=Severity.CRITICAL,
+                title="offboarded bob fires here",
+                description="...",
+                evidence={"credential_id": "AKIA-BOB"},
+                identity_source="google",
+                identity_id="g-bob",
+            )
+        ],
+    )
+    r = _client(fresh_db).get("/persons/google/g-bob")
+    assert r.status_code == 200
+    assert "AKIA-BOB" in r.text
+    assert "offboarded bob fires here" in r.text
+
+
+def test_findings_search_filter(fresh_db):
+    _seed(
+        fresh_db,
+        findings=[
+            Finding(
+                rule_id="A",
+                severity=Severity.HIGH,
+                title="findme-specifically",
+                description="x",
+            ),
+            Finding(
+                rule_id="B",
+                severity=Severity.HIGH,
+                title="another result",
+                description="x",
+            ),
+        ],
+    )
+    r = _client(fresh_db).get("/findings?q=findme")
+    assert "findme-specifically" in r.text
+    assert "another result" not in r.text
+
+
+def test_hx_request_returns_partial_only(fresh_db):
+    """HTMX requests for findings should return just the list partial."""
+    _seed(
+        fresh_db,
+        findings=[
+            Finding(rule_id="A", severity=Severity.HIGH, title="hello", description="")
+        ],
+    )
+    r = _client(fresh_db).get(
+        "/findings", headers={"HX-Request": "true"}
+    )
+    assert r.status_code == 200
+    # The partial does not include the nav or <html>
+    assert "<nav>" not in r.text
+    assert "<!doctype html>" not in r.text
+    assert "hello" in r.text
+
+
+def test_identities_hx_partial_only(fresh_db):
+    _seed(
+        fresh_db,
+        identities=[
+            Identity(
+                source="aws", source_id="arn:1", email="a@example.com",
+                name="a", status="active",
+            )
+        ],
+    )
+    r = _client(fresh_db).get(
+        "/identities", headers={"HX-Request": "true"}
+    )
+    assert r.status_code == 200
+    assert "<nav>" not in r.text
+    assert "a@example.com" in r.text
+
+
+def test_credentials_hx_partial_only(fresh_db):
+    _seed(
+        fresh_db,
+        credentials=[
+            Credential(
+                source="aws", credential_id="AKIA-1", credential_type="aws_access_key"
+            )
+        ],
+    )
+    r = _client(fresh_db).get(
+        "/credentials", headers={"HX-Request": "true"}
+    )
+    assert r.status_code == 200
+    assert "<nav>" not in r.text
+    assert "AKIA-1" in r.text
+
+
+def test_nav_includes_credentials_tab(fresh_db):
+    r = _client(fresh_db).get("/")
+    assert 'href="/credentials"' in r.text

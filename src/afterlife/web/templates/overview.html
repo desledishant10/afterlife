@@ -3,7 +3,7 @@
 {% block content %}
 
 <h1>Overview</h1>
-<p class="meta">{{ total_findings }} findings across {{ source_counts|length }} source system(s).</p>
+<p class="meta">{{ total_findings }} findings, {{ credential_count }} credentials, {{ total_persons }} identities across {{ source_counts|length }} source(s).</p>
 
 <h2>Findings by severity</h2>
 <div class="row">
@@ -25,16 +25,68 @@
   </a>
 </div>
 
+{% set max_sev = [severity_counts.critical, severity_counts.high, severity_counts.medium, severity_counts.low]|max %}
+{% if total_findings > 0 %}
+<div class="row" style="margin-top: 1rem;">
+  <div class="chart" style="flex: 2;">
+    <div class="chart-title">Severity distribution</div>
+    <div class="bar-row">
+      <span class="bar-label">critical</span>
+      <div class="bar-track"><div class="bar-fill critical" style="width: {{ (severity_counts.critical / max_sev * 100) if max_sev > 0 else 0 }}%;"></div></div>
+      <span class="bar-count">{{ severity_counts.critical }}</span>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label">high</span>
+      <div class="bar-track"><div class="bar-fill high" style="width: {{ (severity_counts.high / max_sev * 100) if max_sev > 0 else 0 }}%;"></div></div>
+      <span class="bar-count">{{ severity_counts.high }}</span>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label">medium</span>
+      <div class="bar-track"><div class="bar-fill medium" style="width: {{ (severity_counts.medium / max_sev * 100) if max_sev > 0 else 0 }}%;"></div></div>
+      <span class="bar-count">{{ severity_counts.medium }}</span>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label">low</span>
+      <div class="bar-track"><div class="bar-fill low" style="width: {{ (severity_counts.low / max_sev * 100) if max_sev > 0 else 0 }}%;"></div></div>
+      <span class="bar-count">{{ severity_counts.low }}</span>
+    </div>
+  </div>
+  {% set max_blast = [blast_counts.broad, blast_counts.moderate, blast_counts.limited]|max %}
+  <div class="chart" style="flex: 1;">
+    <div class="chart-title">Blast tiers</div>
+    <div class="bar-row">
+      <span class="bar-label">broad</span>
+      <div class="bar-track"><div class="bar-fill broad" style="width: {{ (blast_counts.broad / max_blast * 100) if max_blast > 0 else 0 }}%;"></div></div>
+      <span class="bar-count">{{ blast_counts.broad }}</span>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label">moderate</span>
+      <div class="bar-track"><div class="bar-fill moderate" style="width: {{ (blast_counts.moderate / max_blast * 100) if max_blast > 0 else 0 }}%;"></div></div>
+      <span class="bar-count">{{ blast_counts.moderate }}</span>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label">limited</span>
+      <div class="bar-track"><div class="bar-fill limited" style="width: {{ (blast_counts.limited / max_blast * 100) if max_blast > 0 else 0 }}%;"></div></div>
+      <span class="bar-count">{{ blast_counts.limited }}</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <h2>Identity graph</h2>
 <div class="row">
-  <div class="metric">
+  <a class="metric" href="/identities">
     <span class="count">{{ total_persons }}</span>
     <span class="label">Persons</span>
-  </div>
-  <div class="metric">
+  </a>
+  <a class="metric" href="/identities?cross_source_only=true">
     <span class="count">{{ cross_source_count }}</span>
     <span class="label">Cross-source</span>
-  </div>
+  </a>
+  <a class="metric" href="/credentials">
+    <span class="count">{{ credential_count }}</span>
+    <span class="label">Credentials</span>
+  </a>
   {% for src, n in source_counts.items() %}
   <div class="metric">
     <span class="count">{{ n }}</span>
@@ -51,7 +103,7 @@
       <span class="badge {{ f.severity }}">{{ f.severity }}</span>
       {% if f.blast_label %}<span class="blast {{ f.blast_label }}">{{ f.blast_label }}</span>{% endif %}
       <span>{{ f.title }}</span>
-      <span class="rule-id">{{ f.rule_id }}</span>
+      <a class="rule-id" href="/findings/{{ f.id }}">#{{ f.id }} {{ f.rule_id }} →</a>
     </summary>
     <div class="body">
       <p>{{ f.description }}</p>
