@@ -121,17 +121,21 @@ choose based on consumer.
 <details>
 <summary>More screenshots</summary>
 
-| Credentials across all sources | Overview, bottom (scan history + top findings) |
+| Credentials across all sources | Credentials, continued |
 |---|---|
-| <img alt="Credentials"     src="docs/media/credentials.png"     width="420"> | <img alt="Overview, bottom" src="docs/media/overview-detail.png" width="420"> |
+| <img alt="Credentials"     src="docs/media/credentials.png"      width="420"> | <img alt="Credentials, continued" src="docs/media/credentials-more.png" width="420"> |
 
-| Findings (medium / low tiers) | Credentials, continued |
+| Findings (medium / low tiers, orphaned identities) | Overview, bottom (top findings by blast radius) |
 |---|---|
-| <img alt="Findings, more"  src="docs/media/findings-more.png"   width="420"> | <img alt="Credentials, continued" src="docs/media/credentials-more.png" width="420"> |
+| <img alt="Findings, more"  src="docs/media/findings-more.png"    width="420"> | <img alt="Overview, bottom" src="docs/media/overview-detail.png"      width="420"> |
 
 | Identities, mixed-source middle | Identities, single-source bottom (bots, no-email cases) |
 |---|---|
-| <img alt="Identities, middle" src="docs/media/identities-middle.png" width="420"> | <img alt="Identities, bottom" src="docs/media/identities-bottom.png" width="420"> |
+| <img alt="Identities, middle" src="docs/media/identities-middle.png" width="420"> | <img alt="Identities, bottom" src="docs/media/identities-bottom.png"  width="420"> |
+
+Every scan run captured by the operational scan-history page:
+
+<img alt="Scan history: 8 collectors run with status, records, duration" src="docs/media/scan-history.png" width="900">
 
 </details>
 
