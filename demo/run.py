@@ -32,6 +32,7 @@ from afterlife import db
 from afterlife.collectors.aws import AWSCollector
 from afterlife.collectors.azure_entra import AzureEntraIDCollector
 from afterlife.collectors.github import GitHubCollector
+from afterlife.collectors.gitlab import GitLabCollector
 from afterlife.collectors.google_workspace import GoogleWorkspaceCollector
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.reporting.html_report import write_html_report
@@ -215,6 +216,45 @@ GH_REPOS = [
     {"id": 1, "name": "main-app", "full_name": f"{GH_ORG}/main-app"},
     {"id": 2, "name": "infra", "full_name": f"{GH_ORG}/infra"},
 ]
+
+# ---------- GitLab seed specs ----------
+
+GL_GROUP = "demo-group"
+
+
+@dataclass
+class GLMemberSpec:
+    username: str
+    name: str
+    email: str | None
+    state: str = "active"
+    note: str = ""
+
+
+GL_MEMBERS = [
+    GLMemberSpec("alice", "Alice Example", "alice@example.com",
+                 note="5-way cross-source: AWS + GitHub + Google + Azure + GitLab"),
+    GLMemberSpec("priya", "Priya Singh", "priya@example.com",
+                 note="GitLab only"),
+]
+
+
+GL_PROJECTS = [
+    {"id": 9001, "name": "demo-service", "path_with_namespace": f"{GL_GROUP}/demo-service"},
+]
+
+# A single project deploy key, fresh enough to stay quiet — its only job here
+# is to demonstrate GitLab credential collection working end-to-end.
+GL_DEPLOY_KEYS_RAW = [
+    {
+        "id": 4242,
+        "title": "ci-deploy",
+        "created_days_ago": 40,
+        "last_used_days_ago": 5,
+        "can_push": False,
+    }
+]
+
 
 GH_DEPLOY_KEYS = {
     f"{GH_ORG}/main-app": [
@@ -432,6 +472,54 @@ def seed_azure_routes(router) -> None:
     ).mock(return_value=httpx.Response(200, json={"value": users_json}))
 
 
+def _gl_member_json(spec: GLMemberSpec, idx: int) -> dict:
+    return {
+        "id": 10000 + idx,
+        "username": spec.username,
+        "name": spec.name,
+        "email": spec.email,
+        "state": spec.state,
+        "access_level": 30,
+        "expires_at": None,
+        "web_url": f"https://gitlab.com/{spec.username}",
+    }
+
+
+def _gl_deploy_keys_json() -> list[dict]:
+    return [
+        {
+            "id": k["id"],
+            "title": k["title"],
+            "created_at": _iso(DEMO_NOW - timedelta(days=k["created_days_ago"])),
+            "last_used_at": _iso(
+                DEMO_NOW - timedelta(days=k["last_used_days_ago"])
+            ),
+            "can_push": k["can_push"],
+        }
+        for k in GL_DEPLOY_KEYS_RAW
+    ]
+
+
+def seed_gitlab_routes(router) -> None:
+    members = [_gl_member_json(m, i) for i, m in enumerate(GL_MEMBERS)]
+    router.route(
+        method="GET",
+        host="gitlab.com",
+        path=f"/api/v4/groups/{GL_GROUP}/members/all",
+    ).mock(return_value=httpx.Response(200, json=members))
+    router.route(
+        method="GET",
+        host="gitlab.com",
+        path=f"/api/v4/groups/{GL_GROUP}/projects",
+    ).mock(return_value=httpx.Response(200, json=GL_PROJECTS))
+    for project in GL_PROJECTS:
+        router.route(
+            method="GET",
+            host="gitlab.com",
+            path=f"/api/v4/projects/{project['id']}/deploy_keys",
+        ).mock(return_value=httpx.Response(200, json=_gl_deploy_keys_json()))
+
+
 def seed_github_routes(router) -> None:
     """Register respx routes that serve the synthetic GitHub org.
 
@@ -533,6 +621,19 @@ def _render_azure_seed() -> None:
         status = "[dim]act  [/dim]" if u.enabled else "[red]DISA[/red]"
         console.print(
             f"  [dim]●[/dim]  {status} {u.upn:<22} [dim]({u.note})[/dim]"
+        )
+    console.print()
+
+
+def _render_gitlab_seed() -> None:
+    console.print("[bold][3b/5][/bold] Seeding GitLab group...")
+    for m in GL_MEMBERS:
+        console.print(
+            f"  [dim]●[/dim]  member  {m.username:<10} [dim]({m.note})[/dim]"
+        )
+    for p in GL_PROJECTS:
+        console.print(
+            f"  [dim]●[/dim]  project {p['path_with_namespace']} [dim](1 deploy key)[/dim]"
         )
     console.print()
 
@@ -692,10 +793,12 @@ def main() -> None:
         seed_github_routes(gh_mock)
         seed_google_routes(gh_mock)
         seed_azure_routes(gh_mock)
+        seed_gitlab_routes(gh_mock)
         _render_aws_seed()
         _render_github_seed()
         _render_google_seed()
         _render_azure_seed()
+        _render_gitlab_seed()
 
         db.init_db(db_path)
         session = boto3.Session(
@@ -732,6 +835,13 @@ def main() -> None:
             ).run()
             run["records_collected"] = n_azure
         console.print(f"  [green]OK[/green] collected {n_azure} Entra ID records")
+        console.print("       [dim]$[/dim] afterlife scan gitlab")
+        with record_run(db_path, "gitlab") as run:
+            n_gl = GitLabCollector(
+                db_path=db_path, token="demo-token", group=GL_GROUP
+            ).run()
+            run["records_collected"] = n_gl
+        console.print(f"  [green]OK[/green] collected {n_gl} GitLab records")
         console.print()
 
         console.print(

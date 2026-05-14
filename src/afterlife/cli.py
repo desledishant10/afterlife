@@ -55,6 +55,29 @@ def scan_github(
     console.print(f"[green]OK[/green] collected {n} GitHub records")
 
 
+@scan_app.command("gitlab")
+def scan_gitlab(
+    token: str = typer.Option(..., envvar="GITLAB_TOKEN"),
+    group: str = typer.Option(..., envvar="GITLAB_GROUP"),
+    api_url: str = typer.Option(
+        "https://gitlab.com/api/v4",
+        envvar="GITLAB_API_URL",
+        help="Base URL for self-hosted GitLab.",
+    ),
+    db_path: Path = DEFAULT_DB,
+) -> None:
+    """Pull group members and project deploy keys from a GitLab group."""
+    from afterlife.collectors.gitlab import GitLabCollector
+    from afterlife.scan_runs import record_run
+
+    with record_run(db_path, "gitlab") as run:
+        n = GitLabCollector(
+            token=token, group=group, db_path=db_path, api_url=api_url
+        ).run()
+        run["records_collected"] = n
+    console.print(f"[green]OK[/green] collected {n} GitLab records")
+
+
 @scan_app.command("idp")
 def scan_idp(
     provider: str = typer.Option("google", help="google | okta | azure"),
