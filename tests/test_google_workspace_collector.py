@@ -146,6 +146,32 @@ def test_unauthorized_raises(fresh_db):
 
 
 @respx.mock
+def test_admin_and_2sv_signals_preserved_in_metadata(fresh_db):
+    _users_route().mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "users": [
+                    {
+                        **_user("1", "admin@example.com"),
+                        "isAdmin": True,
+                        "isEnforcedIn2Sv": False,
+                        "isEnrolledIn2Sv": False,
+                    }
+                ]
+            },
+        )
+    )
+    _run(fresh_db)
+    with db.connect(fresh_db) as conn:
+        row = conn.execute("SELECT metadata FROM identities").fetchone()
+        meta = json.loads(row["metadata"])
+        assert meta["is_admin"] is True
+        assert meta["is_enforced_in_2sv"] is False
+        assert meta["is_enrolled_in_2sv"] is False
+
+
+@respx.mock
 def test_never_logged_in_sentinel_normalized_to_none(fresh_db):
     _users_route().mock(
         return_value=httpx.Response(

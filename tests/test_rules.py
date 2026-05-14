@@ -3,9 +3,12 @@ from datetime import timedelta
 from afterlife import db
 from afterlife.config import Config
 from afterlife.graph.identity_graph import IdentityGraph
-from afterlife.models import Identity
+from afterlife.models import Credential, Identity
+from afterlife.rules.admin_without_mfa import admin_without_mfa
 from afterlife.rules.never_used import never_used
 from afterlife.rules.offboarded_owner import offboarded_owner
+from afterlife.rules.orphaned_identity import orphaned_identity
+from afterlife.rules.outside_collab_with_aws import outside_collab_with_aws
 from afterlife.rules.unrotated_key import unrotated_key
 from afterlife.rules.unused_credential import unused_credential
 from tests.conftest import make_credential, make_identity
@@ -352,4 +355,275 @@ def test_rule_registry_discovers_all_rules():
     from afterlife.rules.registry import all_rules
 
     ids = {r.id for r in all_rules()}
-    assert ids >= {"OFFBOARDED-OWNER", "UNUSED-CREDENTIAL", "NEVER-USED", "UNROTATED-KEY"}
+    assert ids >= {
+        "OFFBOARDED-OWNER",
+        "UNUSED-CREDENTIAL",
+        "NEVER-USED",
+        "UNROTATED-KEY",
+        "ORPHANED-IDENTITY",
+        "OUTSIDE-COLLAB-WITH-AWS",
+        "ADMIN-WITHOUT-MFA",
+    }
+
+
+# ---------- ORPHANED-IDENTITY ----------
+
+
+def test_orphaned_identity_fires_for_google_only_user(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g1",
+                email="nina@example.com",
+                name="Nina",
+                status="active",
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = orphaned_identity(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].rule_id == "ORPHANED-IDENTITY"
+    assert findings[0].identity_source == "google"
+
+
+def test_orphaned_identity_quiet_when_downstream_present(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g1",
+                email="alice@example.com",
+                name="Alice",
+                status="active",
+            ),
+        )
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="aws",
+                source_id="arn:1",
+                email="alice@example.com",
+                name="Alice",
+                status="active",
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = orphaned_identity(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_orphaned_identity_quiet_when_already_deprovisioned(fresh_db):
+    """A suspended IdP user is handled by OFFBOARDED-OWNER (when they have creds);
+    ORPHANED-IDENTITY should not pile on with redundant noise."""
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g1",
+                email="ex@example.com",
+                name="Ex",
+                status="suspended",
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = orphaned_identity(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+# ---------- OUTSIDE-COLLAB-WITH-AWS ----------
+
+
+def test_outside_collab_with_aws_fires_when_outside_member_has_aws_cred(fresh_db):
+    aws_arn = "arn:aws:iam::123:user/jane"
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="github",
+                source_id="contractor-jane",
+                email="jane@vendor.com",
+                name="Jane",
+                status="active",
+                metadata={"is_outside_collaborator": True},
+            ),
+        )
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="aws",
+                source_id=aws_arn,
+                email="jane@vendor.com",
+                name="jane",
+                status="active",
+            ),
+        )
+        db.upsert_credential(
+            conn,
+            Credential(
+                source="aws",
+                credential_id="AKIA-JANE",
+                credential_type="aws_access_key",
+                owner_source="aws",
+                owner_id=aws_arn,
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = outside_collab_with_aws(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].evidence["credential_id"] == "AKIA-JANE"
+
+
+def test_outside_collab_quiet_when_user_is_full_member(fresh_db):
+    aws_arn = "arn:aws:iam::123:user/alice"
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="github",
+                source_id="alice",
+                email="alice@example.com",
+                name="Alice",
+                status="active",
+                metadata={"is_outside_collaborator": False},
+            ),
+        )
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="aws",
+                source_id=aws_arn,
+                email="alice@example.com",
+                name="alice",
+                status="active",
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = outside_collab_with_aws(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_outside_collab_quiet_when_no_aws_link(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="github",
+                source_id="contractor-jane",
+                email="jane@vendor.com",
+                name="Jane",
+                status="active",
+                metadata={"is_outside_collaborator": True},
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = outside_collab_with_aws(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+# ---------- ADMIN-WITHOUT-MFA ----------
+
+
+def test_admin_without_mfa_fires_when_admin_2sv_not_enforced(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-admin",
+                email="admin@example.com",
+                name="Admin",
+                status="active",
+                metadata={"is_admin": True, "is_enforced_in_2sv": False},
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = admin_without_mfa(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].evidence["admin_id"] == "g-admin"
+
+
+def test_admin_without_mfa_quiet_when_2sv_enforced(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-safe",
+                email="safe@example.com",
+                name="Safe",
+                status="active",
+                metadata={"is_admin": True, "is_enforced_in_2sv": True},
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = admin_without_mfa(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_admin_without_mfa_quiet_for_non_admin(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-norm",
+                email="norm@example.com",
+                name="Norm",
+                status="active",
+                metadata={"is_admin": False, "is_enforced_in_2sv": False},
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = admin_without_mfa(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_admin_without_mfa_quiet_when_2sv_signal_unknown_and_enrolled(fresh_db):
+    """If enforcement is None but the user IS enrolled, treat as protected
+    (avoids noise on Workspaces that haven't enabled enforcement at the org
+    level but have voluntary enrollment)."""
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-enrolled",
+                email="enrolled@example.com",
+                name="Enrolled",
+                status="active",
+                metadata={
+                    "is_admin": True,
+                    "is_enforced_in_2sv": None,
+                    "is_enrolled_in_2sv": True,
+                },
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = admin_without_mfa(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_admin_without_mfa_fires_when_both_signals_negative(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            Identity(
+                source="google",
+                source_id="g-no2fa",
+                email="no2fa@example.com",
+                name="No2FA",
+                status="active",
+                metadata={
+                    "is_admin": True,
+                    "is_enforced_in_2sv": None,
+                    "is_enrolled_in_2sv": False,
+                },
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = admin_without_mfa(conn, Config(), _graph(conn))
+    assert len(findings) == 1
