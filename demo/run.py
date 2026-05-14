@@ -468,6 +468,8 @@ def _render_google_seed() -> None:
 
 
 def _render_findings(findings) -> None:
+    suppressed = [f for f in findings if f.suppressed]
+    findings = [f for f in findings if not f.suppressed]
     by_sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for f in findings:
         by_sev[f.severity.value] += 1
@@ -521,7 +523,10 @@ def _render_findings(findings) -> None:
         )
     console.print(table)
     console.print()
-    console.print(f"[bold]{len(findings)} findings[/bold]")
+    console.print(
+        f"[bold]{len(findings)} active findings[/bold]"
+        f"{f' ([dim]{len(suppressed)} suppressed by allowlist[/dim])' if suppressed else ''}"
+    )
     for sev in ("critical", "high", "medium", "low"):
         style = SEVERITY_STYLE[sev]
         console.print(f"  [{style}]{by_sev[sev]:>2}[/{style}] {sev}")
@@ -625,8 +630,11 @@ def main() -> None:
         console.print(f"  [green]OK[/green] collected {n_idp} Google Workspace records")
         console.print()
 
-        console.print("[bold][5/5][/bold] [dim]$[/dim] afterlife analyze")
-        findings = run_all(db_path)
+        console.print(
+            "[bold][5/5][/bold] [dim]$[/dim] afterlife analyze --allowlist demo/allowlist.yaml"
+        )
+        allowlist_path = Path(__file__).parent / "allowlist.yaml"
+        findings = run_all(db_path, allowlist_path=allowlist_path)
         console.print()
         _render_findings(findings)
 

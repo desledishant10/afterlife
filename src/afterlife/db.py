@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS findings (
     evidence TEXT,
     suggested_remediation TEXT,
     blast_radius TEXT,
+    suppressed INTEGER NOT NULL DEFAULT 0,
+    suppression_reason TEXT,
     detected_at TEXT NOT NULL
 );
 
@@ -75,6 +77,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(findings)")}
     if "blast_radius" not in cols:
         conn.execute("ALTER TABLE findings ADD COLUMN blast_radius TEXT")
+    if "suppressed" not in cols:
+        conn.execute(
+            "ALTER TABLE findings ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0"
+        )
+    if "suppression_reason" not in cols:
+        conn.execute("ALTER TABLE findings ADD COLUMN suppression_reason TEXT")
 
 
 def upsert_identity(conn: sqlite3.Connection, identity: Identity) -> None:
@@ -145,9 +153,10 @@ def insert_finding(conn: sqlite3.Connection, f: Finding) -> None:
         INSERT INTO findings (
             rule_id, severity, title, description,
             identity_source, identity_id, evidence,
-            suggested_remediation, blast_radius, detected_at
+            suggested_remediation, blast_radius,
+            suppressed, suppression_reason, detected_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             f.rule_id,
@@ -159,6 +168,8 @@ def insert_finding(conn: sqlite3.Connection, f: Finding) -> None:
             json.dumps(f.evidence),
             f.suggested_remediation,
             blast_json,
+            1 if f.suppressed else 0,
+            f.suppression_reason,
             f.detected_at.isoformat(),
         ),
     )

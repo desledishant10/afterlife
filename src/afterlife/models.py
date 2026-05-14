@@ -66,4 +66,6 @@ class Finding:
     evidence: dict = field(default_factory=dict)
     suggested_remediation: str = ""
     blast_radius: BlastRadius | None = None
+    suppressed: bool = False
+    suppression_reason: str | None = None
     detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

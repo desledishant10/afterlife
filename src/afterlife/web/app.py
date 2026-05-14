@@ -109,6 +109,7 @@ def create_app(db_path: Path) -> FastAPI:
         rule: str | None = Query(None),
         blast: str | None = Query(None),
         q: str | None = Query(None),
+        show_suppressed: bool = Query(False),
     ):
         all_findings = _load_findings(app.state.db_path)
         findings = list(all_findings)
@@ -118,6 +119,8 @@ def create_app(db_path: Path) -> FastAPI:
                 f.get("evidence") or {}, indent=2, sort_keys=True
             )
 
+        if not show_suppressed:
+            findings = [f for f in findings if not f.get("suppressed")]
         if severity:
             findings = [f for f in findings if f["severity"] == severity]
         if rule:
@@ -130,6 +133,7 @@ def create_app(db_path: Path) -> FastAPI:
 
         findings.sort(
             key=lambda f: (
+                f.get("suppressed", False),
                 SEVERITY_ORDER.get(f["severity"], 99),
                 -((f.get("blast_radius") or {}).get("score") or 0.0),
                 f.get("detected_at") or "",
@@ -137,6 +141,7 @@ def create_app(db_path: Path) -> FastAPI:
         )
 
         rule_ids = sorted({f["rule_id"] for f in all_findings})
+        suppressed_count = sum(1 for f in all_findings if f.get("suppressed"))
 
         is_partial = request.headers.get("HX-Request") == "true"
         template = "_findings_list.html" if is_partial else "findings.html"
@@ -153,6 +158,8 @@ def create_app(db_path: Path) -> FastAPI:
                 "filter_rule": rule,
                 "filter_blast": blast,
                 "query": q or "",
+                "show_suppressed": show_suppressed,
+                "suppressed_count": suppressed_count,
             },
         )
 
@@ -380,7 +387,8 @@ def _load_findings(db_path: Path) -> list[dict[str, Any]]:
             """
             SELECT id, rule_id, severity, title, description,
                    identity_source, identity_id, evidence,
-                   suggested_remediation, blast_radius, detected_at
+                   suggested_remediation, blast_radius,
+                   suppressed, suppression_reason, detected_at
             FROM findings
             """
         ).fetchall()
@@ -391,6 +399,7 @@ def _load_findings(db_path: Path) -> list[dict[str, Any]]:
             d["evidence"] = json.loads(d["evidence"])
         if d.get("blast_radius"):
             d["blast_radius"] = json.loads(d["blast_radius"])
+        d["suppressed"] = bool(d.get("suppressed"))
         findings.append(d)
     return findings
 
@@ -401,7 +410,8 @@ def _load_finding(db_path: Path, finding_id: int) -> dict[str, Any] | None:
             """
             SELECT id, rule_id, severity, title, description,
                    identity_source, identity_id, evidence,
-                   suggested_remediation, blast_radius, detected_at
+                   suggested_remediation, blast_radius,
+                   suppressed, suppression_reason, detected_at
             FROM findings WHERE id = ?
             """,
             (finding_id,),
@@ -413,6 +423,7 @@ def _load_finding(db_path: Path, finding_id: int) -> dict[str, Any] | None:
         d["evidence"] = json.loads(d["evidence"])
     if d.get("blast_radius"):
         d["blast_radius"] = json.loads(d["blast_radius"])
+    d["suppressed"] = bool(d.get("suppressed"))
     return d
 
 

@@ -11,9 +11,17 @@
 <h1>
   <span class="badge {{ finding.severity }}">{{ finding.severity }}</span>
   {% if finding.blast_label %}<span class="blast {{ finding.blast_label }}">{{ finding.blast_label }}{% if finding.blast_radius %} ({{ "%.2f"|format(finding.blast_radius.score) }}){% endif %}</span>{% endif %}
+  {% if finding.suppressed %}<span class="badge suppressed-badge">suppressed</span>{% endif %}
   {{ finding.title }}
 </h1>
 <p class="meta">{{ finding.rule_id }} &middot; detected {{ finding.detected_at[:19] if finding.detected_at else "?" }}</p>
+
+{% if finding.suppressed %}
+<div class="card" style="border-left: 4px solid var(--border-strong);">
+  <h4>Suppressed</h4>
+  <p>{{ finding.suppression_reason or "(no reason recorded)" }}</p>
+</div>
+{% endif %}
 
 <div class="card">
   <p>{{ finding.description }}</p>

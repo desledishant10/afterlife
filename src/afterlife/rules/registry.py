@@ -1,9 +1,11 @@
 import importlib
 import json
 import pkgutil
+from datetime import datetime
 from pathlib import Path
 
 from afterlife import db
+from afterlife.allowlist import Suppression, apply_suppressions, load_allowlist
 from afterlife.config import DEFAULT, Config
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.models import Credential, Finding, Severity
@@ -56,8 +58,17 @@ def all_rules() -> list[Rule]:
     return list(_RULES)
 
 
-def run_all(db_path: Path, config: Config = DEFAULT) -> list[Finding]:
+def run_all(
+    db_path: Path,
+    config: Config = DEFAULT,
+    *,
+    allowlist_path: Path | None = None,
+) -> list[Finding]:
     all_rules()
+    suppressions = load_allowlist(allowlist_path) if allowlist_path else []
+    today = datetime.utcnow().date()
+    active_suppressions = [s for s in suppressions if s.is_active(today)]
+
     findings: list[Finding] = []
     with db.connect(db_path) as conn:
         graph = IdentityGraph.from_conn(conn)
@@ -67,6 +78,11 @@ def run_all(db_path: Path, config: Config = DEFAULT) -> list[Finding]:
                 cred = _find_credential(f, credential_index)
                 if cred is not None:
                     f.blast_radius = score_credential(cred)
+                for s in active_suppressions:
+                    if s.matches(f):
+                        f.suppressed = True
+                        f.suppression_reason = s.reason or "suppressed"
+                        break
                 db.insert_finding(conn, f)
                 findings.append(f)
     return findings
