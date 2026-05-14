@@ -226,6 +226,7 @@ docs/              ARCHITECTURE.md, DETECTIONS.md, INTERVIEW_TALK_TRACK.md
 
 ## Further reading
 
+- **[docs/PLAYBOOK.md](docs/PLAYBOOK.md): complete usage walkthrough (start here for hands-on)**
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): layered design + why these boundaries
 - [docs/DETECTIONS.md](docs/DETECTIONS.md): every rule, false-positive notes, remediation
 - [docs/blog/the-graph-layer.md](docs/blog/the-graph-layer.md): design essay on why a graph is the right shape for cross-source ghost-access detection

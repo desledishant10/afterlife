@@ -722,6 +722,28 @@ def test_cross_account_trust_quiet_when_no_policy(fresh_db):
     assert findings == []
 
 
+def test_run_all_replaces_prior_findings(fresh_db):
+    """`analyze` is a snapshot, not an append-log: re-running must not
+    duplicate findings in the database."""
+    from afterlife.rules.registry import run_all
+
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(conn, make_identity(status="suspended"))
+        db.upsert_credential(conn, make_credential())
+
+    run_all(fresh_db)
+    run_all(fresh_db)
+    run_all(fresh_db)
+
+    with db.connect(fresh_db) as conn:
+        # The OFFBOARDED-OWNER rule should fire exactly once for the one
+        # credential present, regardless of how many times analyze was called.
+        n = conn.execute(
+            "SELECT COUNT(*) AS n FROM findings WHERE rule_id = 'OFFBOARDED-OWNER'"
+        ).fetchone()["n"]
+        assert n == 1
+
+
 def test_rule_registry_discovers_all_rules():
     from afterlife.rules.registry import all_rules
 
