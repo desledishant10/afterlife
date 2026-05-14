@@ -35,6 +35,7 @@ from afterlife.collectors.gcp_iam import GCPIAMCollector
 from afterlife.collectors.github import GitHubCollector
 from afterlife.collectors.gitlab import GitLabCollector
 from afterlife.collectors.google_workspace import GoogleWorkspaceCollector
+from afterlife.collectors.slack import SlackCollector
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.reporting.html_report import write_html_report
 from afterlife.rules.registry import run_all
@@ -245,6 +246,34 @@ GCP_SAS = [
         "legacy-bot", "Legacy Bot", disabled=True, keys_days_ago=(400,),
         note="disabled, but key still exists",
     ),
+]
+
+
+# ---------- Slack seed specs ----------
+
+
+@dataclass
+class SlackUserSpec:
+    user_id: str
+    username: str
+    email: str | None
+    real_name: str
+    is_admin: bool = False
+    is_bot: bool = False
+    deleted: bool = False
+    note: str = ""
+
+
+SLACK_USERS = [
+    SlackUserSpec("U001", "alice", "alice@example.com", "Alice Example",
+                  note="Slack member, 6-way cross-source"),
+    SlackUserSpec("U002", "dave", "dave@example.com", "Dave Example",
+                  is_admin=True,
+                  note="Slack admin, expands dave's ADMIN-CONCENTRATION sources"),
+    SlackUserSpec("U003", "pixel-bot", None, "Pixel Notifier", is_bot=True,
+                  note="bot, Slack-only"),
+    SlackUserSpec("U004", "ex-employee", "ex@example.com", "Ex Employee",
+                  deleted=True, note="deleted (deprovisioned)"),
 ]
 
 
@@ -503,6 +532,39 @@ def seed_azure_routes(router) -> None:
     ).mock(return_value=httpx.Response(200, json={"value": users_json}))
 
 
+def _slack_user_json(spec: SlackUserSpec) -> dict:
+    return {
+        "id": spec.user_id,
+        "team_id": "T-DEMO",
+        "name": spec.username,
+        "real_name": spec.real_name,
+        "profile": {
+            "email": spec.email,
+            "real_name": spec.real_name,
+            "display_name": spec.username,
+        },
+        "deleted": spec.deleted,
+        "is_admin": spec.is_admin,
+        "is_owner": False,
+        "is_primary_owner": False,
+        "is_restricted": False,
+        "is_ultra_restricted": False,
+        "is_bot": spec.is_bot,
+        "is_app_user": False,
+    }
+
+
+def seed_slack_routes(router) -> None:
+    members = [_slack_user_json(u) for u in SLACK_USERS]
+    router.route(
+        method="GET", host="slack.com", path="/api/users.list"
+    ).mock(
+        return_value=httpx.Response(
+            200, json={"ok": True, "members": members}
+        )
+    )
+
+
 def _gcp_sa_json(spec: GCPServiceAccountSpec) -> dict:
     email = f"{spec.email_local}@{GCP_PROJECT}.iam.gserviceaccount.com"
     return {
@@ -699,6 +761,23 @@ def _render_azure_seed() -> None:
     console.print()
 
 
+def _render_slack_seed() -> None:
+    console.print("[bold][3d/5][/bold] Seeding Slack workspace...")
+    for u in SLACK_USERS:
+        if u.deleted:
+            flag = "[red]DEL  [/red]"
+        elif u.is_bot:
+            flag = "[cyan]bot  [/cyan]"
+        elif u.is_admin:
+            flag = "[yellow]admin[/yellow]"
+        else:
+            flag = "[dim]act  [/dim]"
+        console.print(
+            f"  [dim]●[/dim]  {flag} {u.username:<12} [dim]({u.note})[/dim]"
+        )
+    console.print()
+
+
 def _render_gcp_seed() -> None:
     console.print("[bold][3c/5][/bold] Seeding GCP IAM project...")
     for sa in GCP_SAS:
@@ -882,12 +961,14 @@ def main() -> None:
         seed_azure_routes(gh_mock)
         seed_gitlab_routes(gh_mock)
         seed_gcp_routes(gh_mock)
+        seed_slack_routes(gh_mock)
         _render_aws_seed()
         _render_github_seed()
         _render_google_seed()
         _render_azure_seed()
         _render_gitlab_seed()
         _render_gcp_seed()
+        _render_slack_seed()
 
         db.init_db(db_path)
         session = boto3.Session(
@@ -940,6 +1021,13 @@ def main() -> None:
             ).run()
             run["records_collected"] = n_gcp
         console.print(f"  [green]OK[/green] collected {n_gcp} GCP records")
+        console.print("       [dim]$[/dim] afterlife scan slack")
+        with record_run(db_path, "slack") as run:
+            n_slack = SlackCollector(
+                db_path=db_path, token="xoxb-demo-token"
+            ).run()
+            run["records_collected"] = n_slack
+        console.print(f"  [green]OK[/green] collected {n_slack} Slack records")
         console.print()
 
         console.print(
