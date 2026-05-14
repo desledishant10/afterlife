@@ -98,6 +98,7 @@ def _result(finding: dict[str, Any]) -> dict[str, Any]:
         "properties": {
             "title": finding["title"],
             "severity": finding["severity"],
+            "blast_radius": finding.get("blast_radius"),
             "evidence": evidence,
             "suggested_remediation": finding.get("suggested_remediation"),
             "identity_source": finding.get("identity_source"),
@@ -113,7 +114,7 @@ def _load_findings(db_path: Path) -> list[dict[str, Any]]:
             """
             SELECT rule_id, severity, title, description,
                    identity_source, identity_id, evidence,
-                   suggested_remediation, detected_at
+                   suggested_remediation, blast_radius, detected_at
             FROM findings
             """
         ).fetchall()
@@ -122,5 +123,7 @@ def _load_findings(db_path: Path) -> list[dict[str, Any]]:
         d = dict(r)
         if d.get("evidence"):
             d["evidence"] = json.loads(d["evidence"])
+        if d.get("blast_radius"):
+            d["blast_radius"] = json.loads(d["blast_radius"])
         findings.append(d)
     return findings

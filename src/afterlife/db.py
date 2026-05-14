@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS findings (
     identity_id TEXT,
     evidence TEXT,
     suggested_remediation TEXT,
+    blast_radius TEXT,
     detected_at TEXT NOT NULL
 );
 
@@ -66,6 +67,14 @@ def connect(path: Path) -> Iterator[sqlite3.Connection]:
 def init_db(path: Path) -> None:
     with connect(path) as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Best-effort column additions for DBs created on older schema versions."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(findings)")}
+    if "blast_radius" not in cols:
+        conn.execute("ALTER TABLE findings ADD COLUMN blast_radius TEXT")
 
 
 def upsert_identity(conn: sqlite3.Connection, identity: Identity) -> None:
@@ -126,14 +135,19 @@ def upsert_credential(conn: sqlite3.Connection, cred: Credential) -> None:
 
 
 def insert_finding(conn: sqlite3.Connection, f: Finding) -> None:
+    blast_json = None
+    if f.blast_radius is not None:
+        blast_json = json.dumps(
+            {"score": f.blast_radius.score, "factors": f.blast_radius.factors}
+        )
     conn.execute(
         """
         INSERT INTO findings (
             rule_id, severity, title, description,
             identity_source, identity_id, evidence,
-            suggested_remediation, detected_at
+            suggested_remediation, blast_radius, detected_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             f.rule_id,
@@ -144,6 +158,7 @@ def insert_finding(conn: sqlite3.Connection, f: Finding) -> None:
             f.identity_id,
             json.dumps(f.evidence),
             f.suggested_remediation,
+            blast_json,
             f.detected_at.isoformat(),
         ),
     )

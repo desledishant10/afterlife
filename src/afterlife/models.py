@@ -11,6 +11,26 @@ class Severity(str, Enum):
 
 
 @dataclass(slots=True)
+class BlastRadius:
+    """Per-credential estimate of what an attacker could do if it leaked.
+
+    `score` is in [0.0, 1.0]. `factors` are human-readable strings explaining
+    how the score was derived (intended for display in reports).
+    """
+
+    score: float
+    factors: list[str] = field(default_factory=list)
+
+    @property
+    def label(self) -> str:
+        if self.score >= 0.7:
+            return "broad"
+        if self.score >= 0.4:
+            return "moderate"
+        return "limited"
+
+
+@dataclass(slots=True)
 class Identity:
     source: str
     source_id: str
@@ -45,4 +65,5 @@ class Finding:
     identity_id: str | None = None
     evidence: dict = field(default_factory=dict)
     suggested_remediation: str = ""
+    blast_radius: BlastRadius | None = None
     detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

@@ -124,11 +124,32 @@ HTML_TEMPLATE = """<!doctype html>
   .badge.high { background: var(--high); }
   .badge.medium { background: var(--medium); }
   .badge.low { background: var(--low); }
+  .blast {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-left: 0.5rem;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: white;
+    vertical-align: 2px;
+  }
+  .blast.broad { border-color: var(--critical); color: var(--critical); }
+  .blast.moderate { border-color: var(--medium); color: var(--medium); }
+  .blast.limited { border-color: var(--low); color: var(--low); }
   .rule-id {
     font-family: var(--mono);
     color: var(--muted);
     font-size: 0.8rem;
     margin-left: 0.5rem;
+  }
+  .factors {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-style: italic;
+    margin-top: 0.25rem;
   }
   details.finding .body {
     margin-top: 0.75rem;
@@ -215,10 +236,15 @@ HTML_TEMPLATE = """<!doctype html>
   {% for f in findings %}
   <details class="finding {{ f.severity }}">
     <summary>
-      <span class="badge {{ f.severity }}">{{ f.severity }}</span>{{ f.title }}<span class="rule-id">{{ f.rule_id }}</span>
+      <span class="badge {{ f.severity }}">{{ f.severity }}</span>{{ f.title }}{% if f.blast_label %}<span class="blast {{ f.blast_label }}">{{ f.blast_label }} blast</span>{% endif %}<span class="rule-id">{{ f.rule_id }}</span>
     </summary>
     <div class="body">
       <p>{{ f.description }}</p>
+      {% if f.blast_radius %}
+      <h4>Blast radius</h4>
+      <p><b>{{ "%.2f"|format(f.blast_radius.score) }}</b> ({{ f.blast_label }})</p>
+      <div class="factors">{{ f.blast_radius.factors|join("; ") }}</div>
+      {% endif %}
       <h4>Evidence</h4>
       <pre>{{ f.evidence_pretty }}</pre>
       {% if f.suggested_remediation %}
@@ -262,8 +288,14 @@ HTML_TEMPLATE = """<!doctype html>
 
 def write_html_report(db_path: Path) -> str:
     findings = _load_findings(db_path)
+    # Sort by severity, then by descending blast radius (broad blasts come first
+    # within the same severity tier).
     findings.sort(
-        key=lambda f: (SEVERITY_ORDER.get(f["severity"], 99), f.get("detected_at") or "")
+        key=lambda f: (
+            SEVERITY_ORDER.get(f["severity"], 99),
+            -(f.get("blast_radius") or {}).get("score", 0.0),
+            f.get("detected_at") or "",
+        )
     )
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for f in findings:
@@ -271,6 +303,7 @@ def write_html_report(db_path: Path) -> str:
         f["evidence_pretty"] = json.dumps(
             f.get("evidence") or {}, indent=2, sort_keys=True
         )
+        f["blast_label"] = _blast_label(f.get("blast_radius"))
 
     graph = IdentityGraph.from_db(db_path)
     persons = sorted(
@@ -297,7 +330,7 @@ def _load_findings(db_path: Path) -> list[dict[str, Any]]:
             """
             SELECT rule_id, severity, title, description,
                    identity_source, identity_id, evidence,
-                   suggested_remediation, detected_at
+                   suggested_remediation, blast_radius, detected_at
             FROM findings
             """
         ).fetchall()
@@ -306,5 +339,18 @@ def _load_findings(db_path: Path) -> list[dict[str, Any]]:
         d = dict(r)
         if d.get("evidence"):
             d["evidence"] = json.loads(d["evidence"])
+        if d.get("blast_radius"):
+            d["blast_radius"] = json.loads(d["blast_radius"])
         findings.append(d)
     return findings
+
+
+def _blast_label(blast: dict | None) -> str | None:
+    if not blast:
+        return None
+    s = blast.get("score") or 0.0
+    if s >= 0.7:
+        return "broad"
+    if s >= 0.4:
+        return "moderate"
+    return "limited"
