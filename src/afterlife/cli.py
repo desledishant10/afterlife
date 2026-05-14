@@ -62,6 +62,16 @@ def scan_idp(
         envvar="GOOGLE_ADMIN_EMAIL",
         help="Workspace super-admin to impersonate (Google Workspace only).",
     ),
+    okta_domain: str | None = typer.Option(
+        None,
+        envvar="OKTA_DOMAIN",
+        help="Okta domain (Okta only), e.g. myorg.okta.com.",
+    ),
+    okta_token: str | None = typer.Option(
+        None,
+        envvar="OKTA_API_TOKEN",
+        help="Okta SSWS API token (Okta only).",
+    ),
     db_path: Path = DEFAULT_DB,
 ) -> None:
     """Pull user inventory from the identity provider."""
@@ -71,6 +81,9 @@ def scan_idp(
     if provider == "google":
         kwargs["service_account_file"] = service_account_file
         kwargs["admin_email"] = admin_email
+    elif provider == "okta":
+        kwargs["domain"] = okta_domain
+        kwargs["api_token"] = okta_token
     n = build_idp_collector(provider, db_path=db_path, **kwargs).run()
     console.print(f"[green]OK[/green] collected {n} identity records")
 

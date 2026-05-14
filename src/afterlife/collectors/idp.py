@@ -2,22 +2,16 @@ from pathlib import Path
 
 from afterlife.collectors.base import Collector
 from afterlife.collectors.google_workspace import GoogleWorkspaceCollector
-
-
-class OktaCollector(Collector):
-    source = "okta"
-
-    def run(self) -> int:
-        # TODO future commit:
-        #   - GET /api/v1/users with paginator (link header)
-        #   - statuses of interest: SUSPENDED, DEPROVISIONED, ACTIVE
-        #   - lastLogin for staleness; OAuth tokens via /api/v1/users/{id}/tokens
-        raise NotImplementedError("Okta collector not yet implemented")
+from afterlife.collectors.okta import OktaCollector
 
 
 def build_idp_collector(provider: str, db_path: Path, **kwargs) -> Collector:
     if provider == "google":
-        return GoogleWorkspaceCollector(db_path=db_path, **kwargs)
+        google_keys = {"service_account_file", "admin_email", "access_token"}
+        filtered = {k: v for k, v in kwargs.items() if k in google_keys}
+        return GoogleWorkspaceCollector(db_path=db_path, **filtered)
     if provider == "okta":
-        return OktaCollector(db_path)
+        okta_keys = {"domain", "api_token", "api_url"}
+        filtered = {k: v for k, v in kwargs.items() if k in okta_keys}
+        return OktaCollector(db_path=db_path, **filtered)
     raise ValueError(f"Unknown IdP provider: {provider!r}")
