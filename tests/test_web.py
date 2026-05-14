@@ -711,6 +711,22 @@ def test_app_js_served(fresh_db):
     assert "keydown" in r.text
 
 
+def test_app_js_includes_ack_logic(fresh_db):
+    """The acknowledge controls are entirely client-side; verify the wiring
+    survives in the bundled app.js."""
+    r = _client(fresh_db).get("/static/app.js")
+    assert "afterlife.acked" in r.text
+    assert "attachAckButtons" in r.text
+    assert "localStorage" in r.text
+
+
+def test_ack_css_present(fresh_db):
+    """Per-finding ack visual depends on .acked styles in the stylesheet."""
+    r = _client(fresh_db).get("/static/style.css")
+    assert "details.finding.acked" in r.text
+    assert ".ack-btn" in r.text
+
+
 def test_keyboard_help_dialog_present(fresh_db):
     r = _client(fresh_db).get("/")
     assert '<dialog id="kbd-help"' in r.text

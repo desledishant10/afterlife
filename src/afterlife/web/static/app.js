@@ -13,6 +13,74 @@
 (function () {
   "use strict";
 
+  // ---------- per-finding acknowledge (localStorage) ----------
+  const ACK_KEY = "afterlife.acked";
+
+  function loadAcked() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(ACK_KEY) || "[]"));
+    } catch (e) {
+      return new Set();
+    }
+  }
+
+  function saveAcked(set) {
+    try {
+      localStorage.setItem(ACK_KEY, JSON.stringify([...set]));
+    } catch (e) {
+      // localStorage may be disabled / full; degrade silently.
+    }
+  }
+
+  function findingIdFromCard(card) {
+    const link = card.querySelector('a[href^="/findings/"]');
+    if (!link) return null;
+    const match = link.getAttribute("href").match(/\/findings\/(\d+)/);
+    return match ? match[1] : null;
+  }
+
+  function attachAckButtons() {
+    const acked = loadAcked();
+    document.querySelectorAll("details.finding:not(.ack-attached)").forEach((card) => {
+      card.classList.add("ack-attached");
+      const id = findingIdFromCard(card);
+      if (!id) return;
+      if (acked.has(id)) card.classList.add("acked");
+
+      const summary = card.querySelector("summary");
+      if (!summary) return;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ack-btn" + (acked.has(id) ? " acked" : "");
+      btn.textContent = acked.has(id) ? "✓ acked" : "ack";
+      btn.title = "Acknowledge (visual only, stored in your browser)";
+      btn.setAttribute("aria-pressed", acked.has(id) ? "true" : "false");
+      btn.addEventListener("click", (e) => {
+        // Don't toggle the <details> when the button is clicked.
+        e.preventDefault();
+        e.stopPropagation();
+        const set = loadAcked();
+        if (set.has(id)) {
+          set.delete(id);
+          card.classList.remove("acked");
+          btn.classList.remove("acked");
+          btn.textContent = "ack";
+          btn.setAttribute("aria-pressed", "false");
+        } else {
+          set.add(id);
+          card.classList.add("acked");
+          btn.classList.add("acked");
+          btn.textContent = "✓ acked";
+          btn.setAttribute("aria-pressed", "true");
+        }
+        saveAcked(set);
+        document.body.dispatchEvent(new CustomEvent("afterlife:ack-changed"));
+      });
+      summary.appendChild(btn);
+    });
+  }
+
   // ---------- copy-to-clipboard ----------
   function attachCopyButtons() {
     document.querySelectorAll("pre:not(.copy-attached)").forEach((pre) => {
@@ -139,6 +207,7 @@
   // ---------- bootstrap ----------
   function init() {
     attachCopyButtons();
+    attachAckButtons();
   }
 
   if (document.readyState === "loading") {
@@ -147,6 +216,9 @@
     init();
   }
 
-  // Re-attach copy buttons after HTMX swaps content into the page.
-  document.body.addEventListener("htmx:afterSwap", attachCopyButtons);
+  // Re-attach controls after HTMX swaps content into the page.
+  document.body.addEventListener("htmx:afterSwap", () => {
+    attachCopyButtons();
+    attachAckButtons();
+  });
 })();

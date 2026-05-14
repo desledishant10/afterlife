@@ -277,6 +277,38 @@ details.finding.suppressed[open] { opacity: 1; }
   border: 1px solid var(--border-strong);
 }
 
+/* per-finding acknowledge (client-side, localStorage) */
+details.finding.acked {
+  opacity: 0.6;
+}
+details.finding.acked:hover { opacity: 0.85; }
+details.finding.acked[open] { opacity: 1; }
+details.finding.acked summary > span:not(.badge):not(.blast):not(.rule-id) {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
+}
+
+.ack-btn {
+  margin-left: 0.4rem;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--mono);
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+
+.ack-btn:hover { color: var(--fg); border-color: var(--accent); }
+.ack-btn:focus { outline: none; border-color: var(--accent); }
+.ack-btn.acked {
+  color: var(--link);
+  border-color: var(--link);
+  background: color-mix(in srgb, var(--link) 8%, var(--bg-elevated));
+}
+
 details.finding summary {
   cursor: pointer;
   list-style: none;
