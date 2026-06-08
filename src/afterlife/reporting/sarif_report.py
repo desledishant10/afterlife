@@ -46,7 +46,7 @@ def write_sarif_report(db_path: Path) -> str:
                     "driver": {
                         "name": "Afterlife",
                         "version": __version__,
-                        "informationUri": "https://github.com/anthropics/afterlife",
+                        "informationUri": "https://github.com/desledishant10/afterlife",
                         "rules": [_rule_descriptor(r) for r in rules],
                     }
                 },
