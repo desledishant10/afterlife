@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from afterlife import db
+from afterlife import __version__, db
 
 app = typer.Typer(
     help="Afterlife: surface credentials that outlive their owners.",
@@ -14,6 +14,26 @@ app.add_typer(scan_app, name="scan")
 console = Console()
 
 DEFAULT_DB = Path("afterlife.db")
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        console.print(f"afterlife {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show the Afterlife version and exit.",
+    ),
+) -> None:
+    """Afterlife: surface credentials that outlive their owners."""
 
 
 @app.command()

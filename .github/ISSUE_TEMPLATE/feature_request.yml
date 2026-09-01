@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest a new collector, detection rule, or capability
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The ghost-access gap or workflow pain this addresses.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - New collector (source system)
+        - New detection rule
+        - Reporting / export format
+        - Dashboard
+        - Integrations / alerting
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like to see. Sketches / API shapes welcome.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

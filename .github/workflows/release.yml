@@ -1,0 +1,56 @@
+name: Release
+
+# Builds the sdist + wheel on every version tag (v*) and publishes to PyPI
+# via Trusted Publishing (OIDC, no long-lived token).
+#
+# One-time setup required on your side before the first tag:
+#   1. Register the project name on PyPI (see README "PyPI name" note).
+#   2. On PyPI: project -> Settings -> Publishing -> add a GitHub trusted
+#      publisher for owner=desledishant10, repo=afterlife,
+#      workflow=release.yml, environment=pypi.
+#   3. In this repo: Settings -> Environments -> create an environment named
+#      "pypi" (optionally gate it with a required reviewer = you).
+# After that, `git tag v0.1.0 && git push --tags` publishes automatically.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Check metadata
+        run: |
+          python -m pip install twine
+          twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # required for PyPI Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
