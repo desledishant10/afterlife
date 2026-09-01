@@ -8,9 +8,13 @@ gateway. None of these headers depend on TLS so they apply uniformly.
 
 from __future__ import annotations
 
+import base64
+import binascii
+import hmac
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import PlainTextResponse, Response
 
 # style-src needs 'unsafe-inline' because we set a couple of inline style
 # attributes in templates (severity-tile color anchors). Everything else
@@ -48,3 +52,37 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         for header, value in SECURITY_HEADERS.items():
             response.headers.setdefault(header, value)
         return response
+
+
+class BasicAuthMiddleware(BaseHTTPMiddleware):
+    """Password-gate the dashboard with HTTP Basic auth (any username).
+
+    A Pro feature: only wired in when `afterlife serve --require-auth` supplies
+    a password. Compares in constant time and returns a WWW-Authenticate
+    challenge so browsers show a native login prompt.
+    """
+
+    def __init__(self, app, password: str):
+        super().__init__(app)
+        self._password = password
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        if self._authorized(request):
+            return await call_next(request)
+        return PlainTextResponse(
+            "Authentication required.",
+            status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="Afterlife"'},
+        )
+
+    def _authorized(self, request: Request) -> bool:
+        header = request.headers.get("Authorization", "")
+        scheme, _, param = header.partition(" ")
+        if scheme.lower() != "basic" or not param:
+            return False
+        try:
+            decoded = base64.b64decode(param, validate=True).decode("utf-8")
+        except (binascii.Error, ValueError):
+            return False
+        _, _, supplied = decoded.partition(":")
+        return hmac.compare_digest(supplied, self._password)

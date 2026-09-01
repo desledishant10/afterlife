@@ -11,8 +11,10 @@ interactively. Pages:
   /identities                      Cross-source person view.
   /persons/{source}/{id:path}      Person detail with linked identities + creds + findings.
 
-No DB writes, no auth, single-process. Intended for `afterlife serve` on
-localhost; not hardened for multi-user or public deployment.
+No DB writes, single-process. Unauthenticated by default and intended for
+`afterlife serve` on localhost; optional Basic-auth password protection (a Pro
+feature) is available via `create_app(..., auth_password=...)` before exposing
+it beyond localhost.
 """
 
 from __future__ import annotations
@@ -30,14 +32,14 @@ from fastapi.templating import Jinja2Templates
 from afterlife import __version__, db
 from afterlife.graph.identity_graph import IdentityGraph, Person
 from afterlife.scan_runs import latest_per_source, list_runs
-from afterlife.web.middleware import SecurityHeadersMiddleware
+from afterlife.web.middleware import BasicAuthMiddleware, SecurityHeadersMiddleware
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-def create_app(db_path: Path) -> FastAPI:
+def create_app(db_path: Path, *, auth_password: str | None = None) -> FastAPI:
     app = FastAPI(
         title="Afterlife",
         version=__version__,
@@ -46,6 +48,10 @@ def create_app(db_path: Path) -> FastAPI:
         openapi_url=None,
     )
     app.state.db_path = Path(db_path).resolve()
+    # Auth (added first = inner) runs after the security-headers middleware
+    # (added last = outer), so even a 401 carries the security headers.
+    if auth_password:
+        app.add_middleware(BasicAuthMiddleware, password=auth_password)
     app.add_middleware(SecurityHeadersMiddleware)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(TEMPLATE_DIR))

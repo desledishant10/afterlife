@@ -250,6 +250,28 @@ Matchers: `rule_id`, `credential_id`, `identity_source`, `identity_id`. All
 named fields must match. Catch-all entries (no matchers) are refused at load
 time.
 
+## Editions
+
+Afterlife is **open core**. Everything above is free and always will be:
+detection, the identity graph, blast scoring, monitoring with history,
+alerting, `run` / `watch`, reports, and the local dashboard.
+
+**Pro** adds team/enterprise features, unlocked by an offline license key (a
+signed token verified locally against an embedded public key -- no license
+server, nothing phones home):
+
+| Pro feature | |
+|---|---|
+| Dashboard authentication | `afterlife serve --require-auth` password-protects the dashboard so you can safely expose it to a team |
+
+```bash
+afterlife license                       # show your edition
+export AFTERLIFE_LICENSE=<token>        # activate (or AFTERLIFE_LICENSE_FILE=<path>)
+```
+
+<sub>Maintainers mint licenses with `scripts/issue_license.py` using the
+vendor private key, which is never committed.</sub>
+
 ## Architecture
 
 ```
@@ -279,6 +301,7 @@ src/afterlife/
 ├── web/           FastAPI dashboard + templates + static assets
 ├── runner.py      Pipeline: scan -> analyze -> notify (run / watch)
 ├── allowlist.py   YAML suppression loader + matcher
+├── licensing.py   Offline Pro-license verification (open core)
 ├── scan_runs.py   Run-tracking context manager
 ├── db.py          SQLite schema + helpers
 ├── models.py      Identity, Credential, Finding, BlastRadius

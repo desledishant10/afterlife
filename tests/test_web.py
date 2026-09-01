@@ -11,6 +11,26 @@ def _client(db_path):
     return TestClient(create_app(db_path))
 
 
+def test_dashboard_open_without_auth_by_default(fresh_db):
+    assert _client(fresh_db).get("/").status_code == 200
+
+
+def test_dashboard_requires_basic_auth_when_password_set(fresh_db):
+    client = TestClient(create_app(fresh_db, auth_password="s3cret"))
+
+    unauth = client.get("/")
+    assert unauth.status_code == 401
+    assert unauth.headers.get("WWW-Authenticate", "").lower().startswith("basic")
+    # Security headers still apply to the 401.
+    assert unauth.headers.get("X-Frame-Options") == "DENY"
+
+    assert client.get("/", auth=("admin", "wrong")).status_code == 401
+
+    ok = client.get("/", auth=("admin", "s3cret"))
+    assert ok.status_code == 200
+    assert "Overview" in ok.text
+
+
 def _seed(db_path, *, identities=(), credentials=(), findings=()):
     with db.connect(db_path) as conn:
         for i in identities:
