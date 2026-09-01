@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from afterlife.models import Finding, Severity
 from afterlife.rules.registry import rule
@@ -17,7 +17,7 @@ from afterlife.rules.registry import rule
 )
 def inactive_admin(conn, config, graph) -> list[Finding]:
     findings: list[Finding] = []
-    cutoff = datetime.now(timezone.utc) - timedelta(
+    cutoff = datetime.now(UTC) - timedelta(
         days=config.inactive_admin_days
     )
     seen: set[tuple[str, str]] = set()
@@ -37,7 +37,7 @@ def inactive_admin(conn, config, graph) -> list[Finding]:
             seen.add(key)
 
             label = person.canonical_email or ident.source_id
-            days = (datetime.now(timezone.utc) - last_login).days
+            days = (datetime.now(UTC) - last_login).days
             findings.append(
                 Finding(
                     rule_id="INACTIVE-ADMIN",

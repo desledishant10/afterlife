@@ -7,7 +7,7 @@ a CI image or developer laptop: nobody is watching, but the key is still
 capable of poisoning the codebase.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from afterlife.models import Finding, Severity
 from afterlife.rules.registry import rule
@@ -28,7 +28,7 @@ WRITE_SCOPES = frozenset({"write", "push"})
     severity=Severity.HIGH,
 )
 def stale_deploy_key_write(conn, config, graph) -> list[Finding]:
-    cutoff = datetime.now(timezone.utc) - timedelta(
+    cutoff = datetime.now(UTC) - timedelta(
         days=config.unused_days_threshold
     )
     placeholders = ",".join("?" * len(DEPLOY_KEY_TYPES))

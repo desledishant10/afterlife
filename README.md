@@ -21,7 +21,7 @@ miss it.
 
 ## Status
 
-`v0.1`. 8 source systems collected, 11 detection rules, 250+ tests.
+`v0.1`. 9 source systems collected, 11 detection rules, 250+ tests.
 
 ## Source systems
 
@@ -44,7 +44,7 @@ graph edges directly, even without shared email.
 | `OFFBOARDED-OWNER` | Critical | Active credential whose owner (or any cross-source linked identity) is suspended/archived/deleted in an IdP. The Uber-2022 pattern. |
 | `CROSS-ACCOUNT-TRUST` | Critical | IAM role trusts an external AWS account. The Capital-One-2019 precondition. |
 | `ADMIN-CONCENTRATION` | Critical | Same person holds admin-tier access in 2+ systems (IdP admin flag + AWS AdministratorAccess + ...). |
-| `ADMIN-WITHOUT-MFA` | Critical | Google Workspace admin without 2-step verification enforced. |
+| `ADMIN-WITHOUT-MFA` | Critical | IdP admin (Google Workspace today) without 2-step verification enforced. |
 | `UNUSED-CREDENTIAL` | High | Active credential not used in N days (default 90). |
 | `STALE-DEPLOY-KEY-WRITE` | High | Write-capable deploy key not used in N days. |
 | `OUTSIDE-COLLAB-WITH-AWS` | High | GitHub outside collaborator linked to active AWS credentials. |
@@ -58,7 +58,7 @@ Each rule's logic, false-positive notes, and remediation are in
 
 ## Quickstart
 
-Zero-config demo against in-memory mocks for all 8 source systems:
+Zero-config demo against in-memory mocks for eight of the nine source systems (all but Okta):
 
 ```bash
 make install
@@ -110,7 +110,7 @@ choose based on consumer.
 
 ## Web dashboard
 
-`afterlife serve` launches a local FastAPI dashboard with seven pages.
+`afterlife serve` launches a local FastAPI dashboard with eight pages.
 
 <p>
   <img alt="Overview: severity tiles, blast tiers, identity-graph stats" src="docs/media/overview.png" width="320">
@@ -206,7 +206,7 @@ text). The dashboard wraps the same readers behind FastAPI. Details in
 
 ```
 src/afterlife/
-├── collectors/    8 collectors, one file each
+├── collectors/    9 collectors, one file each
 ├── rules/         11 detection rules, one file each, decorator-registered
 ├── graph/         Identity graph (NetworkX), email + Vault-alias linking
 ├── scoring/       Blast-radius scoring with explainable factors

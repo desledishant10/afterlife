@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from afterlife.models import Finding, Severity
 from afterlife.rules.registry import rule
@@ -15,7 +15,7 @@ from afterlife.rules.registry import rule
     severity=Severity.HIGH,
 )
 def unused_credential(conn, config, graph) -> list[Finding]:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=config.unused_days_threshold)
+    cutoff = datetime.now(UTC) - timedelta(days=config.unused_days_threshold)
     rows = conn.execute(
         """
         SELECT source, credential_id, credential_type, owner_source, owner_id,

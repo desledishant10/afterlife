@@ -49,7 +49,11 @@ def _default_routes(
     )
     _route("/orgs/test-org/installations").mock(
         return_value=httpx.Response(
-            200, json={"total_count": len(installations or []), "installations": installations or []}
+            200,
+            json={
+                "total_count": len(installations or []),
+                "installations": installations or [],
+            },
         )
     )
     _route("/orgs/test-org/repos").mock(

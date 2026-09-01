@@ -112,7 +112,7 @@ def test_collects_deploy_keys(fresh_db):
         "last_used_at": "2024-12-01T08:00:00Z",
         "can_push": True,
     }
-    _route(f"/api/v4/projects/42/deploy_keys").mock(
+    _route("/api/v4/projects/42/deploy_keys").mock(
         return_value=httpx.Response(200, json=[deploy_key])
     )
 
@@ -130,7 +130,7 @@ def test_collects_deploy_keys(fresh_db):
 @respx.mock
 def test_read_only_deploy_key_scope(fresh_db):
     _default_routes(projects=[_project(50, "infra")])
-    _route(f"/api/v4/projects/50/deploy_keys").mock(
+    _route("/api/v4/projects/50/deploy_keys").mock(
         return_value=httpx.Response(
             200,
             json=[
@@ -156,10 +156,10 @@ def test_deploy_keys_403_does_not_block_other_projects(fresh_db):
     _default_routes(
         projects=[_project(1, "private"), _project(2, "public")]
     )
-    _route(f"/api/v4/projects/1/deploy_keys").mock(
+    _route("/api/v4/projects/1/deploy_keys").mock(
         return_value=httpx.Response(403, json={"message": "Forbidden"})
     )
-    _route(f"/api/v4/projects/2/deploy_keys").mock(
+    _route("/api/v4/projects/2/deploy_keys").mock(
         return_value=httpx.Response(
             200,
             json=[

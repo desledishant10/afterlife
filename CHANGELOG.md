@@ -5,7 +5,7 @@ or two commits and one or two of the milestones below.
 
 ## v0.1 (May 2026)
 
-Initial public-ready cut. Eight source systems, eleven detection rules,
+Initial public-ready cut. Nine source systems, eleven detection rules,
 identity-graph linking via email + Vault aliases, four report formats,
 local web dashboard, allowlist/suppression, scan-run history, CI workflow.
 
@@ -41,7 +41,7 @@ NEVER-USED. Low: ORPHANED-IDENTITY.
 - Scan-run tracking with `/scan-history` page
 - Per-finding acknowledge with localStorage
 - Report formats: JSON, HTML, SARIF, PDF
-- Web dashboard: 7 pages, HTMX live filtering, dark mode, keyboard
+- Web dashboard: 8 pages, HTMX live filtering, dark mode, keyboard
   shortcuts, copy-to-clipboard, print stylesheet
 - Strict security headers (CSP, X-Frame-Options, COOP, etc.), disabled
   OpenAPI/docs surface
@@ -96,7 +96,7 @@ coupled pair).
 11. **HTML report.** Self-contained file with severity tiles, expandable
     findings, identity graph. Demo writes one automatically.
 
-12. **Okta collector.** SSWS auth, Link-header pagination. Status map
+12. **Okta collector.** Fourth source system. SSWS auth, Link-header pagination. Status map
     handles Okta's wider vocabulary (STAGED, LOCKED_OUT, etc.).
 
 13. **SARIF report + GitHub Action workflow.** SARIF 2.1.0 output usable
@@ -152,10 +152,10 @@ coupled pair).
     policies + own-account-id via STS. Rule walks each role's policy
     statements and fires on foreign `Principal.AWS` ARNs.
 
-27. **Microsoft Entra ID collector.** Fourth source system. Microsoft
+27. **Microsoft Entra ID collector.** Fifth source system. Microsoft
     Graph OAuth 2.0 client-credentials flow.
 
-28. **GitLab collector.** Fifth source system. PAT auth, group members,
+28. **GitLab collector.** Sixth source system. PAT auth, group members,
     project deploy keys.
 
 29. **ADMIN-CONCENTRATION.** Same person admin in 2+ systems
@@ -164,12 +164,12 @@ coupled pair).
 30. **STALE-DEPLOY-KEY-WRITE.** Focused subset of UNUSED-CREDENTIAL for
     push-capable deploy keys.
 
-31. **GCP IAM collector.** Sixth source system. Service accounts and
+31. **GCP IAM collector.** Seventh source system. Service accounts and
     user-managed keys. UNROTATED-KEY extended to cover GCP keys.
 
-32. **Slack collector.** Seventh source system. workspace members,
+32. **Slack collector.** Eighth source system. workspace members,
     bots, admins, guests, deleted.
 
-33. **Vault collector.** Eighth source system. Entities + aliases. The
+33. **Vault collector.** Ninth source system. Entities + aliases. The
     identity graph gains alias-based linking, so a Vault entity bridges
     AWS + GitHub without needing a shared email.

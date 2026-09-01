@@ -25,11 +25,17 @@ def init(db_path: Path = DEFAULT_DB) -> None:
 
 @scan_app.command("aws")
 def scan_aws(
-    profile: str = typer.Option("default", help="AWS profile name"),
-    region: str = typer.Option("us-east-1", help="AWS region"),
+    profile: str | None = typer.Option(
+        None, envvar="AWS_PROFILE",
+        help="AWS profile name (default: boto3 credential chain).",
+    ),
+    region: str | None = typer.Option(
+        None, envvar="AWS_REGION",
+        help="AWS region (default: boto3 default region).",
+    ),
     db_path: Path = DEFAULT_DB,
 ) -> None:
-    """Pull IAM users, roles, access keys, and OAuth grants from AWS."""
+    """Pull IAM users, roles, and access keys from AWS."""
     from afterlife.collectors.aws import AWSCollector
     from afterlife.scan_runs import record_run
 
@@ -45,7 +51,7 @@ def scan_github(
     org: str = typer.Option(..., envvar="GITHUB_ORG"),
     db_path: Path = DEFAULT_DB,
 ) -> None:
-    """Pull org members, PATs, deploy keys, and OAuth apps from GitHub."""
+    """Pull org members, outside collaborators, App installations, and deploy keys from GitHub."""
     from afterlife.collectors.github import GitHubCollector
     from afterlife.scan_runs import record_run
 
@@ -145,7 +151,9 @@ def scan_gitlab(
 
 @scan_app.command("idp")
 def scan_idp(
-    provider: str = typer.Option("google", help="google | okta | azure"),
+    provider: str = typer.Option(
+        "google", envvar="IDP_PROVIDER", help="google | okta | azure"
+    ),
     service_account_file: Path | None = typer.Option(
         None,
         envvar="GOOGLE_SERVICE_ACCOUNT_JSON",
@@ -349,7 +357,7 @@ def report(
             pdf_bytes = write_pdf_report(db_path)
         except PdfDependencyError as e:
             console.print(f"[red]{e}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         output.write_bytes(pdf_bytes)
         console.print(f"[green]OK[/green] wrote {output} ({len(pdf_bytes)} bytes)")
         return
