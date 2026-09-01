@@ -58,22 +58,26 @@ def all_rules() -> list[Rule]:
     return list(_RULES)
 
 
-def run_all(
+def run_analysis(
     db_path: Path,
     config: Config = DEFAULT,
     *,
     allowlist_path: Path | None = None,
-) -> list[Finding]:
+) -> tuple[list[Finding], db.ReconcileSummary]:
+    """Run every rule and reconcile the results against stored history.
+
+    Returns the currently-firing findings plus a summary of how they changed
+    since the last run (new / reopened / ongoing / resolved). Findings persist
+    across runs and are tracked by fingerprint rather than deleted, so the
+    dashboard and reports can show a finding's lifecycle.
+    """
     all_rules()
     suppressions = load_allowlist(allowlist_path) if allowlist_path else []
-    today = datetime.now(UTC).date()
-    active_suppressions = [s for s in suppressions if s.is_active(today)]
+    now = datetime.now(UTC)
+    active_suppressions = [s for s in suppressions if s.is_active(now.date())]
 
     findings: list[Finding] = []
     with db.connect(db_path) as conn:
-        # analyze replaces the prior finding set; we don't accumulate history
-        # in this table. Scan-run history lives in scan_runs.
-        conn.execute("DELETE FROM findings")
         graph = IdentityGraph.from_conn(conn)
         credential_index = _load_credential_index(conn)
         for r in _RULES:
@@ -86,8 +90,19 @@ def run_all(
                         f.suppressed = True
                         f.suppression_reason = s.reason or "suppressed"
                         break
-                db.insert_finding(conn, f)
                 findings.append(f)
+        summary = db.reconcile_findings(conn, findings, now)
+    return findings, summary
+
+
+def run_all(
+    db_path: Path,
+    config: Config = DEFAULT,
+    *,
+    allowlist_path: Path | None = None,
+) -> list[Finding]:
+    """Backward-compatible wrapper: the currently-firing findings only."""
+    findings, _ = run_analysis(db_path, config, allowlist_path=allowlist_path)
     return findings
 
 

@@ -10,8 +10,10 @@ def write_json_report(db_path: Path) -> str:
             """
             SELECT rule_id, severity, title, description,
                    identity_source, identity_id, evidence,
-                   suggested_remediation, blast_radius, detected_at
+                   suggested_remediation, blast_radius, detected_at,
+                   status, first_seen, last_seen
             FROM findings
+            WHERE status = 'open'
             ORDER BY
               CASE severity
                 WHEN 'critical' THEN 0

@@ -277,6 +277,23 @@ details.finding.suppressed[open] { opacity: 1; }
   border: 1px solid var(--border-strong);
 }
 
+/* finding lifecycle: new since last scan, and resolved */
+.badge.new-badge {
+  background: var(--link);
+  color: white;
+}
+details.finding.resolved-finding {
+  opacity: 0.6;
+  border-left-color: var(--border-strong);
+}
+details.finding.resolved-finding:hover { opacity: 0.85; }
+details.finding.resolved-finding[open] { opacity: 1; }
+.badge.resolved-badge {
+  background: var(--bg-subtle);
+  color: var(--link);
+  border: 1px solid var(--link);
+}
+
 /* per-finding acknowledge (client-side, localStorage) */
 details.finding.acked {
   opacity: 0.6;

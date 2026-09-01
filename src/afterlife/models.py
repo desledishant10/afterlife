@@ -1,3 +1,5 @@
+import hashlib
+import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -69,3 +71,32 @@ class Finding:
     suppressed: bool = False
     suppression_reason: str | None = None
     detected_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+def finding_fingerprint(f: Finding) -> str:
+    """Stable identity for a finding across scans.
+
+    A finding is (rule, subject). The subject is the thing the finding is
+    about, chosen from the most stable identifier available:
+
+    1. `evidence["credential_id"]` for credential-targeting rules
+       (OFFBOARDED-OWNER, CROSS-ACCOUNT-TRUST, UNROTATED-KEY, ...), and
+    2. `(identity_source, identity_id)` for identity-targeting rules
+       (ADMIN-CONCENTRATION, ORPHANED-IDENTITY, ADMIN-WITHOUT-MFA, ...).
+
+    The fallback (evidence + title) only applies to synthetic findings that
+    carry neither; every shipped rule uses one of the two stable paths, so a
+    finding keeps the same fingerprint run to run and can be tracked as it
+    appears, persists, and resolves.
+    """
+    evidence = f.evidence or {}
+    credential_id = evidence.get("credential_id")
+    if credential_id:
+        subject = f"cred:{credential_id}"
+    elif f.identity_source and f.identity_id:
+        subject = f"id:{f.identity_source}:{f.identity_id}"
+    else:
+        subject = "evi:" + json.dumps(evidence, sort_keys=True, default=str)
+        subject += f"|{f.title}"
+    raw = f"{f.rule_id}|{subject}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]

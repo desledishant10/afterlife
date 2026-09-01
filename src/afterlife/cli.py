@@ -238,9 +238,9 @@ def analyze(
     ),
 ) -> None:
     """Run all detection rules against collected data."""
-    from afterlife.rules.registry import run_all
+    from afterlife.rules.registry import run_analysis
 
-    findings = run_all(db_path, allowlist_path=allowlist)
+    findings, delta = run_analysis(db_path, allowlist_path=allowlist)
     by_severity: dict[str, int] = {}
     suppressed_count = 0
     for f in findings:
@@ -260,6 +260,20 @@ def analyze(
     ):
         if sev in by_severity:
             console.print(f"  [{color}]{by_severity[sev]:>4}[/{color}]  {sev}")
+
+    # Since-last-scan delta: the monitoring signal. New/reopened findings are
+    # what a reviewer (or an alert) should act on; resolved ones are progress.
+    changes = []
+    if delta.new:
+        changes.append(f"[green]+{delta.new} new[/green]")
+    if delta.reopened:
+        changes.append(f"[yellow]+{delta.reopened} reopened[/yellow]")
+    if delta.resolved:
+        changes.append(f"[dim]-{delta.resolved} resolved[/dim]")
+    if changes:
+        console.print("\nSince last analyze: " + ", ".join(changes))
+    else:
+        console.print("\n[dim]No change since last analyze.[/dim]")
 
 
 @app.command("list-rules")

@@ -116,6 +116,7 @@ def _load_findings(db_path: Path) -> list[dict[str, Any]]:
                    identity_source, identity_id, evidence,
                    suggested_remediation, blast_radius, detected_at
             FROM findings
+            WHERE status = 'open'
             """
         ).fetchall()
     findings: list[dict[str, Any]] = []

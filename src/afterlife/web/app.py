@@ -127,8 +127,11 @@ def create_app(db_path: Path) -> FastAPI:
         q: str | None = Query(None),
         show_suppressed: bool = Query(False),
         sort: str = Query("severity"),
+        status: str = Query("open"),
     ):
-        all_findings = _load_findings(app.state.db_path)
+        if status not in ("open", "resolved", "all"):
+            status = "open"
+        all_findings = _load_findings(app.state.db_path, status=status)
         findings = list(all_findings)
         for f in findings:
             f["blast_label"] = _blast_label(f.get("blast_radius"))
@@ -167,6 +170,8 @@ def create_app(db_path: Path) -> FastAPI:
                 "filter_severity": severity,
                 "filter_rule": rule,
                 "filter_blast": blast,
+                "filter_status": status,
+                "new_count": sum(1 for f in all_findings if f.get("is_new")),
                 "query": q or "",
                 "show_suppressed": show_suppressed,
                 "suppressed_count": suppressed_count,
@@ -396,16 +401,29 @@ def create_app(db_path: Path) -> FastAPI:
     return app
 
 
-def _load_findings(db_path: Path) -> list[dict[str, Any]]:
+def _load_findings(db_path: Path, status: str = "open") -> list[dict[str, Any]]:
+    """Load findings, filtered by lifecycle status.
+
+    status="open" (default) returns currently-firing findings, "resolved"
+    returns ones that have gone away, and "all" returns everything.
+    """
+    where = ""
+    params: tuple[Any, ...] = ()
+    if status in ("open", "resolved"):
+        where = "WHERE status = ?"
+        params = (status,)
     with db.connect(db_path) as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT id, rule_id, severity, title, description,
                    identity_source, identity_id, evidence,
                    suggested_remediation, blast_radius,
-                   suppressed, suppression_reason, detected_at
+                   suppressed, suppression_reason, detected_at,
+                   status, first_seen, last_seen, resolved_at
             FROM findings
-            """
+            {where}
+            """,
+            params,
         ).fetchall()
     findings: list[dict[str, Any]] = []
     for r in rows:
@@ -415,6 +433,13 @@ def _load_findings(db_path: Path) -> list[dict[str, Any]]:
         if d.get("blast_radius"):
             d["blast_radius"] = json.loads(d["blast_radius"])
         d["suppressed"] = bool(d.get("suppressed"))
+        # A finding is "new" when it was first observed in the latest scan
+        # (nothing has bumped last_seen past first_seen yet).
+        d["is_new"] = bool(
+            d.get("status") == "open"
+            and d.get("first_seen")
+            and d.get("first_seen") == d.get("last_seen")
+        )
         findings.append(d)
     return findings
 
@@ -426,7 +451,8 @@ def _load_finding(db_path: Path, finding_id: int) -> dict[str, Any] | None:
             SELECT id, rule_id, severity, title, description,
                    identity_source, identity_id, evidence,
                    suggested_remediation, blast_radius,
-                   suppressed, suppression_reason, detected_at
+                   suppressed, suppression_reason, detected_at,
+                   status, first_seen, last_seen, resolved_at
             FROM findings WHERE id = ?
             """,
             (finding_id,),
@@ -439,6 +465,11 @@ def _load_finding(db_path: Path, finding_id: int) -> dict[str, Any] | None:
     if d.get("blast_radius"):
         d["blast_radius"] = json.loads(d["blast_radius"])
     d["suppressed"] = bool(d.get("suppressed"))
+    d["is_new"] = bool(
+        d.get("status") == "open"
+        and d.get("first_seen")
+        and d.get("first_seen") == d.get("last_seen")
+    )
     return d
 
 
