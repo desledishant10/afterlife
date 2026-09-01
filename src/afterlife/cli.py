@@ -429,6 +429,36 @@ def watch(
         console.print("\n[dim]stopped.[/dim]")
 
 
+@app.command("license")
+def license_cmd() -> None:
+    """Show the current edition and license status."""
+    from afterlife.licensing import PRO_FEATURES, current_license
+
+    lic = current_license()
+    if lic and lic.is_pro:
+        console.print("[green]Edition: Pro[/green]")
+        console.print(f"  Licensed to: {lic.customer or '(unnamed)'}")
+        console.print(
+            f"  Expires: {lic.expires_at.date() if lic.expires_at else 'never'}"
+        )
+        console.print("  Pro features enabled:")
+        for fid in lic.features or list(PRO_FEATURES):
+            console.print(f"    - {PRO_FEATURES.get(fid, fid)}")
+        return
+
+    console.print("[bold]Edition: Free[/bold]")
+    console.print(
+        "  Detection, monitoring, alerting, run/watch, reports, and the local "
+        "dashboard are all included."
+    )
+    console.print("\n  Pro adds:")
+    for desc in PRO_FEATURES.values():
+        console.print(f"    - {desc}")
+    console.print(
+        "\n  Activate with AFTERLIFE_LICENSE=<token> or AFTERLIFE_LICENSE_FILE=<path>."
+    )
+
+
 @app.command("list-rules")
 def list_rules() -> None:
     """List all available detection rules."""
@@ -498,6 +528,15 @@ def serve(
     db_path: Path = DEFAULT_DB,
     host: str = typer.Option("127.0.0.1", help="Bind address."),
     port: int = typer.Option(8000, help="Bind port."),
+    require_auth: bool = typer.Option(
+        False, "--require-auth",
+        help="Password-protect the dashboard (Pro). Needed before exposing it "
+             "beyond localhost.",
+    ),
+    password: str | None = typer.Option(
+        None, "--password", envvar="AFTERLIFE_DASHBOARD_PASSWORD",
+        help="Dashboard password, used with --require-auth.",
+    ),
 ) -> None:
     """Launch the local web dashboard at http://host:port."""
     import uvicorn
@@ -510,7 +549,26 @@ def serve(
         )
         raise typer.Exit(1)
 
-    web_app = create_app(db_path)
+    auth_password = None
+    if require_auth:
+        from afterlife.licensing import FEATURE_DASHBOARD_AUTH, has_feature
+
+        if not has_feature(FEATURE_DASHBOARD_AUTH):
+            console.print(
+                "[red]Dashboard authentication is a Pro feature.[/red] "
+                "Run `afterlife license` for status; set AFTERLIFE_LICENSE to enable."
+            )
+            raise typer.Exit(1)
+        if not password:
+            console.print(
+                "[red]--require-auth needs a password[/red] "
+                "(--password or AFTERLIFE_DASHBOARD_PASSWORD)."
+            )
+            raise typer.Exit(1)
+        auth_password = password
+        console.print("[dim]Dashboard authentication: enabled (Pro).[/dim]")
+
+    web_app = create_app(db_path, auth_password=auth_password)
     console.print(
         f"[green]Afterlife dashboard:[/green] http://{host}:{port}  "
         f"[dim](Ctrl+C to stop)[/dim]"

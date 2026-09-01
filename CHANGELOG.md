@@ -41,6 +41,19 @@ Post-v0.1 work toward a continuously-monitoring, installable product.
   cadence, and notification toggle
 - Dockerfile (non-root, `/data` volume) for self-hosted, scheduled operation
 
+### Commercial layer (open core)
+
+- Offline license verification: a Pro license is an Ed25519-signed token
+  (JWT/EdDSA) checked locally against an embedded public key -- no license
+  server, nothing phones home
+- `afterlife license` shows the current edition; licenses activate via
+  `AFTERLIFE_LICENSE` or `AFTERLIFE_LICENSE_FILE`
+- First Pro-gated feature: dashboard authentication
+  (`afterlife serve --require-auth`), Basic-auth password protection so the
+  dashboard can be exposed to a team; refused with an upsell on the free tier
+- `scripts/issue_license.py` mints licenses vendor-side (private key never
+  committed)
+
 ## v0.1 (May 2026)
 
 Initial public-ready cut. Nine source systems, eleven detection rules,

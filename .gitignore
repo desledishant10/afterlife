@@ -25,6 +25,11 @@ config.local.yaml
 reports/
 .afterlife/
 
+# License-signing secrets: the vendor's private key must never be committed.
+.secrets/
+*.pem
+afterlife.yml
+
 # Ad-hoc report artifacts users generate while exploring
 report.json
 report.html
