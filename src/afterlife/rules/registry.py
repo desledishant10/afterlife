@@ -1,11 +1,11 @@
 import importlib
 import json
 import pkgutil
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from afterlife import db
-from afterlife.allowlist import Suppression, apply_suppressions, load_allowlist
+from afterlife.allowlist import load_allowlist
 from afterlife.config import DEFAULT, Config
 from afterlife.graph.identity_graph import IdentityGraph
 from afterlife.models import Credential, Finding, Severity
@@ -66,7 +66,7 @@ def run_all(
 ) -> list[Finding]:
     all_rules()
     suppressions = load_allowlist(allowlist_path) if allowlist_path else []
-    today = datetime.utcnow().date()
+    today = datetime.now(UTC).date()
     active_suppressions = [s for s in suppressions if s.is_active(today)]
 
     findings: list[Finding] = []

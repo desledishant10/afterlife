@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from afterlife.models import Finding, Severity
 from afterlife.rules.registry import rule
@@ -25,7 +25,7 @@ TYPES_WITHOUT_USAGE_SIGNAL = (
     severity=Severity.MEDIUM,
 )
 def never_used(conn, config, graph) -> list[Finding]:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=config.never_used_grace_days)
+    cutoff = datetime.now(UTC) - timedelta(days=config.never_used_grace_days)
     placeholders = ",".join("?" * len(TYPES_WITHOUT_USAGE_SIGNAL))
     rows = conn.execute(
         f"""

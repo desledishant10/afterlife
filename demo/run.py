@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import boto3
@@ -44,7 +44,7 @@ from afterlife.scan_runs import record_run
 
 console = Console()
 
-DEMO_NOW = datetime(2026, 5, 13, 12, 0, tzinfo=timezone.utc)
+DEMO_NOW = datetime(2026, 5, 13, 12, 0, tzinfo=UTC)
 MOTO_ACCOUNT_ID = "123456789012"
 GH_ORG = "test-org"
 GOOGLE_DOMAIN = "example.com"
@@ -803,8 +803,14 @@ def _render_header() -> None:
 def _render_aws_seed() -> None:
     console.print("[bold][1/5][/bold] Seeding AWS environment...")
     for u in AWS_USERS:
+        if "AdministratorAccess" in u.policies:
+            color = "red"
+        elif any("FullAccess" in p for p in u.policies):
+            color = "yellow"
+        else:
+            color = "cyan"
         pols = (
-            f" [{'red' if 'AdministratorAccess' in u.policies else 'yellow' if any('FullAccess' in p for p in u.policies) else 'cyan'}]"
+            f" [{color}]"
             f"[{', '.join(u.policies) if u.policies else '-'}]"
             f"[/]"
         )
@@ -823,7 +829,7 @@ def _render_github_seed() -> None:
         console.print(
             f"  [dim]●[/dim]  outside {m.login:<16} [dim]({m.note})[/dim]"
         )
-    console.print(f"  [dim]●[/dim]  installation: dependabot")
+    console.print("  [dim]●[/dim]  installation: dependabot")
     console.print(
         f"  [dim]●[/dim]  repo {GH_ORG}/main-app [dim](2 deploy keys: ci-deploy fresh, "
         "legacy-deploy stale)[/dim]"

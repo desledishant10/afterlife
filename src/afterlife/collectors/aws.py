@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import boto3
 
@@ -28,8 +29,8 @@ class AWSCollector(Collector):
         self,
         db_path: Path,
         *,
-        profile: str = "default",
-        region: str = "us-east-1",
+        profile: str | None = None,
+        region: str | None = None,
         session: boto3.Session | None = None,
     ):
         super().__init__(db_path)
@@ -60,9 +61,16 @@ class AWSCollector(Collector):
 
     def _make_session(self) -> boto3.Session:
         if self._session is None:
-            self._session = boto3.Session(
-                profile_name=self.profile, region_name=self.region
-            )
+            # Only pass profile/region when explicitly set, so that with neither
+            # given boto3's standard chain (env vars, OIDC web-identity, ~/.aws)
+            # resolves. Forcing profile_name="default" breaks OIDC-based CI where
+            # no [default] profile exists.
+            kwargs: dict[str, str] = {}
+            if self.profile:
+                kwargs["profile_name"] = self.profile
+            if self.region:
+                kwargs["region_name"] = self.region
+            self._session = boto3.Session(**kwargs)
         return self._session
 
     def _client(self):

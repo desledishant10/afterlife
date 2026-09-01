@@ -58,6 +58,19 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+# Typer requires typer.Option()/Argument() calls as parameter defaults, which
+# ruff flags as B008 (function call in default argument). It is the intended
+# idiom for the CLI, not a bug.
+"src/afterlife/cli.py" = ["B008"]
+# Contains an embedded HTML report template where markup line length is
+# inherent; E501 (line-length) does not meaningfully apply to those lines.
+"src/afterlife/reporting/html_report.py" = ["E501"]
+
+[tool.mypy]
+files = ["src"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

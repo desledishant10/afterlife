@@ -118,16 +118,16 @@ images:
 
 <p>
   <img alt="Overview" src="docs/media/overview.png" width="320">
-  <img alt="Findings" src="docs/media/findings-critical.png" width="320">
-  <img alt="Person detail" src="docs/media/person-detail.png" width="320">
+  <img alt="Findings" src="docs/media/findings.png" width="320">
+  <img alt="Identities" src="docs/media/identities.png" width="320">
 </p>
 
 <details>
 <summary>More screenshots</summary>
 
-| Finding detail | Identities |
+| Scan history | Identities |
 |---|---|
-| ![Finding](docs/media/finding-detail.png) | ![Identities](docs/media/identities.png) |
+| ![Scan history](docs/media/scan-history.png) | ![Identities](docs/media/identities.png) |
 
 </details>
 ```

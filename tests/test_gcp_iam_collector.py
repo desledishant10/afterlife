@@ -104,7 +104,8 @@ def test_collects_service_account_keys(fresh_db):
 
     with db.connect(fresh_db) as conn:
         rows = conn.execute(
-            "SELECT * FROM credentials WHERE credential_type = 'gcp_service_account_key' ORDER BY credential_id"
+            "SELECT * FROM credentials WHERE credential_type = 'gcp_service_account_key' "
+            "ORDER BY credential_id"
         ).fetchall()
         assert len(rows) == 2
         assert all(r["owner_source"] == "gcp" and r["owner_id"] == sa["email"] for r in rows)

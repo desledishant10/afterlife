@@ -1,6 +1,5 @@
 import pytest
 
-from afterlife import db
 from afterlife.scan_runs import latest_per_source, list_runs, record_run
 
 
@@ -19,9 +18,8 @@ def test_record_run_writes_started_and_finished(fresh_db):
 
 
 def test_record_run_captures_error(fresh_db):
-    with pytest.raises(RuntimeError):
-        with record_run(fresh_db, "github"):
-            raise RuntimeError("boom")
+    with pytest.raises(RuntimeError), record_run(fresh_db, "github"):
+        raise RuntimeError("boom")
 
     runs = list_runs(fresh_db)
     assert len(runs) == 1

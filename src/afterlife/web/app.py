@@ -547,10 +547,17 @@ def _sort_findings(findings: list[dict], sort_key: str) -> None:
     Suppressed findings always sink to the bottom regardless of sort, so a
     reviewer doesn't have to scroll past triaged items.
     """
-    suppressed = lambda f: f.get("suppressed", False)
-    blast_score = lambda f: -((f.get("blast_radius") or {}).get("score") or 0.0)
-    sev_rank = lambda f: SEVERITY_ORDER.get(f["severity"], 99)
-    detected = lambda f: f.get("detected_at") or ""
+    def suppressed(f):
+        return f.get("suppressed", False)
+
+    def blast_score(f):
+        return -((f.get("blast_radius") or {}).get("score") or 0.0)
+
+    def sev_rank(f):
+        return SEVERITY_ORDER.get(f["severity"], 99)
+
+    def detected(f):
+        return f.get("detected_at") or ""
 
     if sort_key == "blast":
         findings.sort(key=lambda f: (suppressed(f), blast_score(f), sev_rank(f)))

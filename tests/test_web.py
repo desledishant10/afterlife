@@ -1,3 +1,5 @@
+from datetime import UTC
+
 from fastapi.testclient import TestClient
 
 from afterlife import db
@@ -755,9 +757,9 @@ def test_findings_sort_blast_orders_by_blast(fresh_db):
 
 
 def test_findings_sort_newest_orders_by_detected_at(fresh_db):
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
-    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    base = datetime(2026, 1, 1, tzinfo=UTC)
     _seed(
         fresh_db,
         findings=[

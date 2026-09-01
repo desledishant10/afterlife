@@ -3,7 +3,6 @@ import pytest
 from afterlife import db
 from afterlife.models import Finding, Severity
 from afterlife.reporting.pdf_report import (
-    PdfDependencyError,
     write_pdf_report,
 )
 

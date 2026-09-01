@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from afterlife.models import Finding, Severity
 from afterlife.rules.registry import rule
-
 
 ROTATABLE_TYPES = ("aws_access_key", "gcp_service_account_key")
 
@@ -20,7 +19,7 @@ ROTATABLE_TYPES = ("aws_access_key", "gcp_service_account_key")
     severity=Severity.MEDIUM,
 )
 def unrotated_key(conn, config, graph) -> list[Finding]:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=config.unrotated_key_days)
+    cutoff = datetime.now(UTC) - timedelta(days=config.unrotated_key_days)
     placeholders = ",".join("?" * len(ROTATABLE_TYPES))
     rows = conn.execute(
         f"""

@@ -18,7 +18,7 @@ Severity is mapped to SARIF's `level` field:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -53,7 +53,7 @@ def write_sarif_report(db_path: Path) -> str:
                 "invocations": [
                     {
                         "executionSuccessful": True,
-                        "endTimeUtc": datetime.now(timezone.utc).strftime(
+                        "endTimeUtc": datetime.now(UTC).strftime(
                             "%Y-%m-%dT%H:%M:%SZ"
                         ),
                     }

@@ -2,7 +2,7 @@
 
 When I started building [Afterlife](https://github.com/desledishant10/afterlife),
 a ghost-access auditor that catches credentials outliving their owners, I
-spent the first week not building any of that. I built collectors. Eight of
+spent the first week not building any of that. I built collectors. Nine of
 them eventually: AWS IAM, GCP IAM, GitHub, GitLab, Google Workspace,
 Microsoft Entra, Okta, Slack, HashiCorp Vault. Each one a thin wrapper that
 pulls users / service-accounts / credentials and writes them to SQLite.

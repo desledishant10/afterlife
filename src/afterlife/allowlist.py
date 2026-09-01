@@ -26,10 +26,10 @@ loader treats that as a config error and skips it.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Iterable
 
 import yaml
 
@@ -63,9 +63,7 @@ class Suppression:
                 return False
         if self.identity_source and finding.identity_source != self.identity_source:
             return False
-        if self.identity_id and finding.identity_id != self.identity_id:
-            return False
-        return True
+        return not (self.identity_id and finding.identity_id != self.identity_id)
 
 
 def load_allowlist(path: Path | None) -> list[Suppression]:
@@ -111,7 +109,7 @@ def apply_suppressions(
     suppressions: Iterable[Suppression],
     today: date | None = None,
 ) -> None:
-    today = today or datetime.utcnow().date()
+    today = today or datetime.now(UTC).date()
     active = [s for s in suppressions if s.is_active(today)]
     for f in findings:
         for s in active:

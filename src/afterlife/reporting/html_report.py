@@ -8,7 +8,7 @@ an email or commit to a private repo.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -314,7 +314,7 @@ def write_html_report(db_path: Path) -> str:
 
     template = Template(HTML_TEMPLATE, autoescape=True)
     return template.render(
-        generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        generated_at=datetime.now(UTC).isoformat(timespec="seconds"),
         version=__version__,
         findings=findings,
         counts=counts,

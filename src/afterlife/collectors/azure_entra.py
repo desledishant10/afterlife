@@ -15,8 +15,9 @@ handling.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import httpx
 
@@ -70,7 +71,12 @@ class AzureEntraIDCollector(Collector):
             return self._collect(client)
 
     def _fetch_access_token(self) -> str:
-        if not (self.tenant_id and self.client_id and self.client_secret):
+        if not (
+            self.tenant_id
+            and self.client_id
+            and self.client_secret
+            and self.token_endpoint
+        ):
             raise RuntimeError(
                 "tenant_id, client_id, and client_secret are required when "
                 "access_token is not provided"

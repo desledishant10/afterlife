@@ -11,10 +11,11 @@ source as a "last scan" indicator.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from afterlife import db
 
@@ -27,7 +28,7 @@ def record_run(db_path: Path, source: str) -> Iterator[dict[str, Any]]:
         with record_run(db_path, "aws") as run:
             run["records_collected"] = AWSCollector(...).run()
     """
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
     run_id: int | None = None
     with db.connect(db_path) as conn:
         cur = conn.execute(
@@ -43,7 +44,7 @@ def record_run(db_path: Path, source: str) -> Iterator[dict[str, Any]]:
         state["error"] = str(e)
         raise
     finally:
-        finished = datetime.now(timezone.utc).isoformat()
+        finished = datetime.now(UTC).isoformat()
         with db.connect(db_path) as conn:
             conn.execute(
                 """
