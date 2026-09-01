@@ -159,6 +159,32 @@ and self-hosted HTMX (no CDN). Dark mode follows
 `prefers-color-scheme`. Keyboard shortcuts (`/` to search, `g h/f/c/i` to
 navigate, `?` for help). Includes a print stylesheet for PDF-via-browser.
 
+## Alerting
+
+Afterlife tracks findings across runs (each `analyze` reports what is **new**,
+**reopened**, or **resolved** since the last run), so it can alert you the
+moment new ghost access appears rather than only when you go looking.
+
+```bash
+export AFTERLIFE_SLACK_WEBHOOK=https://hooks.slack.com/services/...
+.venv/bin/afterlife analyze --notify        # alert on new/reopened findings
+```
+
+Channels (any combination, configured via environment variables, never
+persisted):
+
+| Channel | Configure with |
+|---------|----------------|
+| Slack   | `AFTERLIFE_SLACK_WEBHOOK` (Incoming Webhook URL), or `--slack-webhook` |
+| Webhook | `AFTERLIFE_WEBHOOK_URL` (alerts POSTed as JSON), or `--webhook` |
+| Email   | `AFTERLIFE_SMTP_HOST` + `AFTERLIFE_EMAIL_TO` (plus optional SMTP auth) |
+
+Only **new and reopened** findings at or above a severity threshold are sent
+(`AFTERLIFE_NOTIFY_MIN_SEVERITY`, default `high`; or `--notify-min-severity`),
+and suppressed findings are never alerted. Run it on a schedule (cron, the CI
+workflow below) to turn Afterlife into a continuous monitor. See
+[.env.example](.env.example) for every variable.
+
 ## CI integration
 
 ```yaml
@@ -215,6 +241,7 @@ src/afterlife/
 ├── graph/         Identity graph (NetworkX), email + Vault-alias linking
 ├── scoring/       Blast-radius scoring with explainable factors
 ├── reporting/     JSON, HTML, SARIF, PDF
+├── notify/        Alerting: Slack, webhook, email (SMTP)
 ├── web/           FastAPI dashboard + templates + static assets
 ├── allowlist.py   YAML suppression loader + matcher
 ├── scan_runs.py   Run-tracking context manager

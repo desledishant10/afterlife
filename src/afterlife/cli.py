@@ -236,6 +236,24 @@ def analyze(
         None, "--allowlist", "-a",
         help="Path to a YAML allowlist of suppressions (see docs).",
     ),
+    notify: bool = typer.Option(
+        False, "--notify",
+        help="Alert on new/reopened findings via channels configured in the "
+             "environment (AFTERLIFE_SLACK_WEBHOOK / AFTERLIFE_WEBHOOK_URL / SMTP).",
+    ),
+    slack_webhook: str | None = typer.Option(
+        None, "--slack-webhook",
+        help="Slack Incoming Webhook URL (implies --notify).",
+    ),
+    webhook: str | None = typer.Option(
+        None, "--webhook",
+        help="Generic webhook URL to POST alerts to (implies --notify).",
+    ),
+    notify_min_severity: str | None = typer.Option(
+        None, "--notify-min-severity",
+        help="Minimum severity to alert on: critical | high | medium | low "
+             "(default high, or AFTERLIFE_NOTIFY_MIN_SEVERITY).",
+    ),
 ) -> None:
     """Run all detection rules against collected data."""
     from afterlife.rules.registry import run_analysis
@@ -274,6 +292,48 @@ def analyze(
         console.print("\nSince last analyze: " + ", ".join(changes))
     else:
         console.print("\n[dim]No change since last analyze.[/dim]")
+
+    if notify or slack_webhook or webhook:
+        _dispatch_alerts(findings, delta, slack_webhook, webhook, notify_min_severity)
+
+
+def _dispatch_alerts(findings, delta, slack_webhook, webhook, min_severity_str) -> None:
+    from afterlife.models import Severity
+    from afterlife.notify import NotifyConfig, notify_findings
+
+    config = NotifyConfig.from_env()
+    if slack_webhook:
+        config.slack_webhook = slack_webhook
+    if webhook:
+        config.webhook_url = webhook
+    if min_severity_str:
+        try:
+            config.min_severity = Severity(min_severity_str.strip().lower())
+        except ValueError:
+            console.print(
+                f"[yellow]Ignoring unknown --notify-min-severity "
+                f"'{min_severity_str}'[/yellow]"
+            )
+
+    if not config.has_channels():
+        console.print(
+            "\n[yellow]Notifications requested but no channels configured.[/yellow] "
+            "Set AFTERLIFE_SLACK_WEBHOOK / AFTERLIFE_WEBHOOK_URL / SMTP env vars, "
+            "or pass --slack-webhook / --webhook."
+        )
+        return
+
+    results = notify_findings(findings, delta, config)
+    if not results:
+        console.print(
+            f"\n[dim]Nothing to alert on (no new/reopened findings at or above "
+            f"{config.min_severity.value}).[/dim]"
+        )
+        return
+    console.print()
+    for channel, status in results.items():
+        color = "green" if status == "sent" else "red"
+        console.print(f"  [{color}]notify:{channel}[/{color}]  {status}")
 
 
 @app.command("list-rules")
