@@ -3,7 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "afterlife"
+# Distribution name on PyPI (the import package and CLI command stay
+# "afterlife"; the bare name "afterlife" was already taken on PyPI).
+name = "afterlife-audit"
 version = "0.1.0"
 description = "Surface credentials that outlive their owners: a ghost-access auditor."
 readme = "README.md"
@@ -44,6 +46,12 @@ dev = [
     "freezegun>=1.5",
     "respx>=0.21",
 ]
+
+[project.urls]
+Homepage = "https://github.com/desledishant10/afterlife"
+Repository = "https://github.com/desledishant10/afterlife"
+Issues = "https://github.com/desledishant10/afterlife/issues"
+Changelog = "https://github.com/desledishant10/afterlife/blob/main/CHANGELOG.md"
 
 [project.scripts]
 afterlife = "afterlife.cli:app"
