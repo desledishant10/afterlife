@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import typer
@@ -334,6 +335,98 @@ def _dispatch_alerts(findings, delta, slack_webhook, webhook, min_severity_str) 
     for channel, status in results.items():
         color = "green" if status == "sent" else "red"
         console.print(f"  [{color}]notify:{channel}[/{color}]  {status}")
+
+
+def _build_run_config(
+    config_path: Path | None,
+    sources: list[str],
+    db_path: Path | None,
+    allowlist: Path | None,
+    notify: bool,
+    interval: int | None,
+):
+    from afterlife.notify import NotifyConfig
+    from afterlife.runner import RunConfig, detect_sources
+
+    env = dict(os.environ)
+    cfg = RunConfig.from_yaml(config_path, env) if config_path else RunConfig(sources=[])
+    if sources:
+        cfg.sources = list(sources)
+    if not cfg.sources:
+        cfg.sources = detect_sources(env)
+    if db_path is not None:
+        cfg.db_path = db_path
+    if allowlist is not None:
+        cfg.allowlist = allowlist
+    if interval is not None:
+        cfg.interval_seconds = interval
+    if notify:
+        cfg.notify = True
+    if cfg.notify and cfg.notify_config is None:
+        cfg.notify_config = NotifyConfig.from_env(env)
+    return cfg
+
+
+def _emit(msg: str) -> None:
+    console.print(f"  [dim]•[/dim] {msg}")
+
+
+@app.command()
+def run(
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="YAML run config (sources, notify, interval)."
+    ),
+    source: list[str] = typer.Option(
+        [], "--source", "-s",
+        help="Source to scan (repeatable): aws, github, gitlab, slack, vault, "
+             "gcp, idp. Overrides config; defaults to whatever the environment "
+             "has credentials for.",
+    ),
+    db_path: Path | None = typer.Option(None, "--db-path"),
+    allowlist: Path | None = typer.Option(None, "--allowlist", "-a"),
+    notify: bool = typer.Option(False, "--notify"),
+) -> None:
+    """Scan configured sources, analyze, and optionally notify. One pass."""
+    from afterlife.runner import run_pipeline
+
+    cfg = _build_run_config(config, source, db_path, allowlist, notify, None)
+    console.print(
+        f"[bold]run[/bold] db={cfg.db_path} sources={', '.join(cfg.sources) or '(none)'}"
+    )
+    result = run_pipeline(cfg, emit=_emit)
+    failed = [s.source for s in result.sources if s.error]
+    if failed:
+        console.print(f"[yellow]{len(failed)} source(s) skipped/failed: "
+                      f"{', '.join(failed)}[/yellow]")
+
+
+@app.command()
+def watch(
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="YAML run config (sources, notify, interval)."
+    ),
+    source: list[str] = typer.Option(
+        [], "--source", "-s", help="Source to scan (repeatable). Overrides config."
+    ),
+    db_path: Path | None = typer.Option(None, "--db-path"),
+    allowlist: Path | None = typer.Option(None, "--allowlist", "-a"),
+    notify: bool = typer.Option(False, "--notify"),
+    interval: int | None = typer.Option(
+        None, "--interval", "-i", help="Seconds between cycles (default 3600)."
+    ),
+) -> None:
+    """Continuously scan, analyze, and notify on an interval (Ctrl-C to stop)."""
+    from afterlife.runner import watch as run_watch
+
+    cfg = _build_run_config(config, source, db_path, allowlist, notify, interval)
+    console.print(
+        f"[green]watching[/green] {', '.join(cfg.sources) or '(none)'} "
+        f"every {cfg.interval_seconds}s. Ctrl-C to stop."
+    )
+    try:
+        run_watch(cfg, emit=_emit)
+    except KeyboardInterrupt:
+        console.print("\n[dim]stopped.[/dim]")
 
 
 @app.command("list-rules")
