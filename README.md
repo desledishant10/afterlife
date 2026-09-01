@@ -185,6 +185,40 @@ and suppressed findings are never alerted. Run it on a schedule (cron, the CI
 workflow below) to turn Afterlife into a continuous monitor. See
 [.env.example](.env.example) for every variable.
 
+## Continuous monitoring
+
+`afterlife run` executes the whole pipeline in one pass (scan the configured
+sources, analyze, and with `--notify` alert), and `afterlife watch` repeats it
+on an interval. Both self-initialize the database, read credentials from the
+environment, and skip any source that is not configured, so one broken
+credential never stops the monitor.
+
+```bash
+# one pass over whatever the environment has credentials for
+.venv/bin/afterlife run --notify
+
+# or run continuously, hourly, over an explicit source list
+.venv/bin/afterlife watch --interval 3600 --notify -s aws -s github -s idp
+```
+
+Keep the source list and cadence declarative with a config file (see
+[afterlife.example.yml](afterlife.example.yml)):
+
+```bash
+.venv/bin/afterlife watch --config afterlife.yml
+```
+
+### Docker
+
+```bash
+docker build -t afterlife .
+docker run --rm -v afterlife-data:/data --env-file .env \
+    afterlife watch --notify -s aws -s github
+```
+
+The image runs as a non-root user and keeps its database on the `/data`
+volume; see the [Dockerfile](Dockerfile).
+
 ## CI integration
 
 ```yaml
@@ -243,6 +277,7 @@ src/afterlife/
 ├── reporting/     JSON, HTML, SARIF, PDF
 ├── notify/        Alerting: Slack, webhook, email (SMTP)
 ├── web/           FastAPI dashboard + templates + static assets
+├── runner.py      Pipeline: scan -> analyze -> notify (run / watch)
 ├── allowlist.py   YAML suppression loader + matcher
 ├── scan_runs.py   Run-tracking context manager
 ├── db.py          SQLite schema + helpers

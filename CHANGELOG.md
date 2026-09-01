@@ -32,6 +32,15 @@ Post-v0.1 work toward a continuously-monitoring, installable product.
 - Channels and the threshold are configured via environment variables and are
   never persisted
 
+### Deployability & continuous mode
+
+- `afterlife run` executes the full pipeline once (scan configured sources,
+  analyze, notify) and `afterlife watch` repeats it on an interval; both
+  self-initialize the database and skip sources that are not configured
+- Declarative run config (`afterlife.example.yml`) for the source list,
+  cadence, and notification toggle
+- Dockerfile (non-root, `/data` volume) for self-hosted, scheduled operation
+
 ## v0.1 (May 2026)
 
 Initial public-ready cut. Nine source systems, eleven detection rules,

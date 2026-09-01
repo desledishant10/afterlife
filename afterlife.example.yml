@@ -1,0 +1,25 @@
+# Example config for `afterlife run` and `afterlife watch`.
+# Copy to afterlife.yml and edit. Credentials come from the environment
+# (see .env.example), never from this file.
+
+# Where the SQLite database lives (in Docker, keep this under the /data volume).
+db_path: afterlife.db
+
+# How often `afterlife watch` runs a full scan/analyze/notify cycle, in seconds.
+interval_seconds: 3600
+
+# Sources to scan each cycle. Omit or leave empty to auto-detect whichever
+# sources have credentials configured in the environment.
+sources:
+  - aws
+  - github
+  - idp        # provider chosen by IDP_PROVIDER (google | okta | azure)
+  - slack
+
+# Alert on new/reopened findings. Channels + threshold come from the
+# environment (AFTERLIFE_SLACK_WEBHOOK / AFTERLIFE_WEBHOOK_URL / SMTP,
+# AFTERLIFE_NOTIFY_MIN_SEVERITY).
+notify: true
+
+# Optional path to a YAML suppression allowlist.
+# allowlist: allowlist.yaml
