@@ -3,7 +3,7 @@
 {% block content %}
 
 <h1>Findings</h1>
-<p class="meta">{{ findings|length }} result(s) of {{ total_findings }}{% if filter_severity or filter_rule or filter_blast or query %} after filtering{% endif %}.</p>
+<p class="meta">{{ findings|length }} result(s) of {{ total_findings }}{% if filter_severity or filter_rule or filter_blast or query or (filter_status and filter_status != "open") %} after filtering{% endif %}.{% if new_count and filter_status == "open" %} <span class="badge new-badge">{{ new_count }} new since last scan</span>{% endif %}</p>
 
 <div class="filter-bar">
   <form method="get" action="/findings"
@@ -11,6 +11,13 @@
         hx-target="#findings-list"
         hx-trigger="change, search delay:300ms from:input[type=search]"
         hx-push-url="true">
+    <label>Status
+      <select name="status" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+        <option value="open" {% if filter_status == "open" %}selected{% endif %}>Open{% if new_count %} ({{ new_count }} new){% endif %}</option>
+        <option value="resolved" {% if filter_status == "resolved" %}selected{% endif %}>Resolved</option>
+        <option value="all" {% if filter_status == "all" %}selected{% endif %}>All</option>
+      </select>
+    </label>
     <label>Severity
       <select name="severity" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
         <option value="">(any)</option>
@@ -52,7 +59,7 @@
     </label>
     <span class="htmx-indicator"><span class="spinner"></span></span>
   </form>
-  {% if filter_severity or filter_rule or filter_blast or query or show_suppressed %}
+  {% if filter_severity or filter_rule or filter_blast or query or show_suppressed or (filter_status and filter_status != "open") %}
   <a class="clear" href="/findings">Clear filters</a>
   {% endif %}
 </div>

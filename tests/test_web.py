@@ -113,6 +113,51 @@ def test_findings_severity_filter(fresh_db):
     assert "critical-finding-title" not in r.text
 
 
+def test_findings_status_filter(fresh_db):
+    """Open findings show by default; resolved ones only under the status filter."""
+    _seed(
+        fresh_db,
+        findings=[
+            Finding(
+                rule_id="OPEN-RULE",
+                severity=Severity.HIGH,
+                title="open-finding-title",
+                description="",
+                evidence={"credential_id": "OPEN-1"},
+            ),
+            Finding(
+                rule_id="GONE-RULE",
+                severity=Severity.HIGH,
+                title="resolved-finding-title",
+                description="",
+                evidence={"credential_id": "GONE-1"},
+            ),
+        ],
+    )
+    # Mark the second finding resolved directly.
+    with db.connect(fresh_db) as conn:
+        conn.execute(
+            "UPDATE findings SET status='resolved', resolved_at='2026-01-02' "
+            "WHERE rule_id='GONE-RULE'"
+        )
+
+    client = _client(fresh_db)
+
+    default = client.get("/findings")
+    assert "open-finding-title" in default.text
+    assert "resolved-finding-title" not in default.text
+    # Freshly-seeded open finding is flagged new.
+    assert "new-badge" in default.text
+
+    resolved = client.get("/findings?status=resolved")
+    assert "resolved-finding-title" in resolved.text
+    assert "open-finding-title" not in resolved.text
+
+    everything = client.get("/findings?status=all")
+    assert "open-finding-title" in everything.text
+    assert "resolved-finding-title" in everything.text
+
+
 def test_findings_rule_filter(fresh_db):
     _seed(
         fresh_db,
