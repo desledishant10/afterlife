@@ -2,7 +2,7 @@ import json
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -238,6 +238,13 @@ class ReconcileSummary:
     ongoing: int = 0
     resolved: int = 0
     open_total: int = 0
+    new_fingerprints: set[str] = field(default_factory=set)
+    reopened_fingerprints: set[str] = field(default_factory=set)
+
+    @property
+    def changed_fingerprints(self) -> set[str]:
+        """Fingerprints that appeared or reappeared this run (worth alerting)."""
+        return self.new_fingerprints | self.reopened_fingerprints
 
 
 def reconcile_findings(
@@ -267,8 +274,10 @@ def reconcile_findings(
         prev = prior.get(fp)
         if prev is None:
             summary.new += 1
+            summary.new_fingerprints.add(fp)
         elif prev == "resolved":
             summary.reopened += 1
+            summary.reopened_fingerprints.add(fp)
         else:
             summary.ongoing += 1
         _upsert_finding(conn, f, fp, now_iso)

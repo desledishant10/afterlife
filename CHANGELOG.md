@@ -3,6 +3,35 @@
 Notable changes to Afterlife, newest first. Each entry maps roughly to one
 or two commits and one or two of the milestones below.
 
+## Unreleased
+
+Post-v0.1 work toward a continuously-monitoring, installable product.
+
+### Project foundation
+
+- Developer CI (ruff + mypy + pytest on Python 3.11 and 3.12) on every push
+  and pull request
+- PyPI packaging as `afterlife-audit` with a Trusted-Publishing release
+  workflow (the import package and `afterlife` command are unchanged)
+- `CONTRIBUTING`, `SECURITY`, `CODE_OF_CONDUCT`, issue and PR templates
+- `afterlife --version`; `make lint` / `typecheck` / `check`
+
+### Continuous monitoring
+
+- Findings are tracked across runs by a stable fingerprint and carry a
+  lifecycle (open / resolved) with first-seen, last-seen, and resolved-at
+- `analyze` reconciles against history instead of wiping, and reports the
+  since-last-scan delta (new / reopened / resolved)
+- Reports and the dashboard show open findings by default; the dashboard adds
+  a status filter, a "new" badge, and per-finding first/last-seen
+
+### Alerting
+
+- `afterlife analyze --notify` sends new and reopened findings (at or above a
+  severity threshold) to Slack, a generic webhook, and/or email over SMTP
+- Channels and the threshold are configured via environment variables and are
+  never persisted
+
 ## v0.1 (May 2026)
 
 Initial public-ready cut. Nine source systems, eleven detection rules,
