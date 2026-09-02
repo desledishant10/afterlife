@@ -279,6 +279,11 @@ server, nothing phones home):
 | Single sign-on (OIDC) | `afterlife serve --sso` puts the dashboard behind your identity provider (Google, Okta, Entra, Auth0, Keycloak) with an optional email/domain allow-list |
 | Ticketing integrations | Files a Jira issue for new and reopened findings on `afterlife analyze --notify`, turning ghost access into tracked work |
 
+**Get Pro** (from **$990/year**, founding rate, first 50 organizations, price
+locked for life): email
+[hello@afterlife.example](mailto:hello@afterlife.example?subject=Afterlife%20Pro%20license)
+with your organization name and you'll get a signed license key to activate:
+
 ```bash
 afterlife license                       # show your edition
 export AFTERLIFE_LICENSE=<token>        # activate (or AFTERLIFE_LICENSE_FILE=<path>)

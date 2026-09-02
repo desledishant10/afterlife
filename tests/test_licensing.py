@@ -125,6 +125,16 @@ def test_license_command_free(monkeypatch):
     assert "Free" in result.stdout
 
 
+def test_license_command_free_shows_get_pro_cta(monkeypatch):
+    from afterlife.licensing import PRO_CONTACT
+    monkeypatch.delenv("AFTERLIFE_LICENSE", raising=False)
+    monkeypatch.delenv("AFTERLIFE_LICENSE_FILE", raising=False)
+    result = runner.invoke(app, ["license"])
+    assert "Get Pro" in result.stdout
+    assert "$990" in result.stdout
+    assert PRO_CONTACT in result.stdout
+
+
 def test_license_command_pro(monkeypatch):
     priv, pub = _keypair()
     monkeypatch.setattr("afterlife.licensing.VENDOR_PUBLIC_KEY", pub)

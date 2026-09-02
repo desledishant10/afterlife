@@ -40,6 +40,12 @@ PRO_FEATURES: dict[str, str] = {
     FEATURE_SSO: "Single sign-on (OIDC) for the dashboard (afterlife serve --sso)",
 }
 
+# "Get Pro" details shown to free users by `afterlife license` and in the README.
+# Founding entry price. Replace PRO_CONTACT with your real sales address before
+# launch (it is a non-routable placeholder today).
+PRO_PRICE = "from $990/year"
+PRO_CONTACT = "hello@afterlife.example"
+
 
 @dataclass
 class License:

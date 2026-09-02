@@ -5,6 +5,14 @@ or two commits and one or two of the milestones below.
 
 ## Unreleased
 
+### Commercial
+
+- Free users now see a "Get Pro" call-to-action with the founding price
+  (from $990/year) and a contact address, in both the README Editions section
+  and the `afterlife license` output. Price/contact live as `PRO_PRICE` /
+  `PRO_CONTACT` in `licensing.py`; the contact is a non-routable placeholder to
+  replace before launch
+
 ### Operations
 
 - `scripts/key_backup.sh` and `docs/KEY-MANAGEMENT.md`: back up, restore, and
