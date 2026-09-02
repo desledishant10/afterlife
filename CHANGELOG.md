@@ -54,6 +54,9 @@ product with an open-core commercial tier.
   dashboard can be exposed to a team; refused with an upsell on the free tier
 - `scripts/issue_license.py` mints licenses vendor-side (private key never
   committed)
+- Second Pro feature: Jira ticketing integration. `afterlife analyze --notify`
+  files a remediation issue for new and reopened findings when the license
+  grants it; configured-but-unlicensed channels are reported with an upsell
 
 ## v0.1 (May 2026)
 

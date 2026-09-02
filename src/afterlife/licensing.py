@@ -32,8 +32,10 @@ _ALGORITHM = "EdDSA"
 
 # Pro feature registry: id -> human description (shown by `afterlife license`).
 FEATURE_DASHBOARD_AUTH = "dashboard_auth"
+FEATURE_INTEGRATIONS = "integrations"
 PRO_FEATURES: dict[str, str] = {
     FEATURE_DASHBOARD_AUTH: "Password-protect the web dashboard (afterlife serve --require-auth)",
+    FEATURE_INTEGRATIONS: "Ticketing integrations: file a Jira issue for new findings",
 }
 
 

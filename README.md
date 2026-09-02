@@ -178,6 +178,7 @@ persisted):
 | Slack   | `AFTERLIFE_SLACK_WEBHOOK` (Incoming Webhook URL), or `--slack-webhook` |
 | Webhook | `AFTERLIFE_WEBHOOK_URL` (alerts POSTed as JSON), or `--webhook` |
 | Email   | `AFTERLIFE_SMTP_HOST` + `AFTERLIFE_EMAIL_TO` (plus optional SMTP auth) |
+| Jira **(Pro)** | `AFTERLIFE_JIRA_URL` + `_EMAIL` + `_TOKEN` + `_PROJECT` (files a remediation ticket per new finding) |
 
 Only **new and reopened** findings at or above a severity threshold are sent
 (`AFTERLIFE_NOTIFY_MIN_SEVERITY`, default `high`; or `--notify-min-severity`),
@@ -263,6 +264,7 @@ server, nothing phones home):
 | Pro feature | |
 |---|---|
 | Dashboard authentication | `afterlife serve --require-auth` password-protects the dashboard so you can safely expose it to a team |
+| Ticketing integrations | Files a Jira issue for new and reopened findings on `afterlife analyze --notify`, turning ghost access into tracked work |
 
 ```bash
 afterlife license                       # show your edition
