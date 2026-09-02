@@ -39,6 +39,11 @@ or two commits and one or two of the milestones below.
   far more AWS services than it uses. The AWS collector attaches per-service
   last-use from IAM Access Advisor to each role (best-effort). This was the
   last rule in the Planned section, which is now empty
+- **PRIVILEGE-DRIFT** now folds in CloudTrail's observed usage when the
+  cloudtrail collector has run: a granted service counts as used if either
+  Access Advisor or CloudTrail saw it within the window (the more recent wins),
+  cutting false positives where Access Advisor's last-accessed lags real
+  activity. Findings carry `evidence.cloudtrail_refined`
 
 ### Pro features
 
