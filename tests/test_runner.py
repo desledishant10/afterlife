@@ -9,6 +9,7 @@ from afterlife import db
 from afterlife.models import Severity
 from afterlife.notify import NotifyConfig
 from afterlife.runner import (
+    SOURCE_BUILDERS,
     RunConfig,
     SourceNotConfigured,
     detect_sources,
@@ -161,3 +162,12 @@ def test_run_config_from_yaml_enables_notify_config(tmp_path):
     assert cfg.notify is True
     assert cfg.notify_config is not None
     assert cfg.notify_config.webhook_url == WEBHOOK
+
+
+def test_cloudtrail_is_opt_in_not_autodetected():
+    # cloudtrail is a registered source (usable via --source) but excluded from
+    # auto-detection because it is an enrichment over aws.
+    assert "cloudtrail" in SOURCE_BUILDERS
+    detected = detect_sources({})
+    assert "aws" in detected
+    assert "cloudtrail" not in detected

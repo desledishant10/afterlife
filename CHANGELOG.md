@@ -5,6 +5,15 @@ or two commits and one or two of the milestones below.
 
 ## Unreleased
 
+### Collectors
+
+- New **CloudTrail** usage-enrichment collector (`afterlife scan cloudtrail`):
+  reads recent CloudTrail events and attaches observed last-use and
+  used-services (`metadata.observed_services`) to the AWS credentials, advancing
+  `last_used_at` to real activity. Adds no identities; run it after `scan aws`.
+  It sharpens the usage-based rules with audit-log ground truth and is opt-in
+  in `run`/`watch` (not auto-detected)
+
 ### Dashboard
 
 - New **Trends** page: charts finding history from the lifecycle timestamps

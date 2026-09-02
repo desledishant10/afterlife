@@ -36,6 +36,11 @@ miss it.
 | **Identity providers** | Google Workspace, Microsoft Entra ID, Okta |
 | **Operational** | Slack, HashiCorp Vault |
 
+Plus a **CloudTrail** enrichment collector (`afterlife scan cloudtrail`): it adds
+no identities, but reads recent CloudTrail events to attach observed last-use
+and used-services to the AWS credentials, giving the usage-based rules
+ground-truth data. Run it after `scan aws`.
+
 Each collector lives in `src/afterlife/collectors/`. They are intentionally
 dumb (no analysis), idempotent (re-run safe), and tested against mocked APIs
 (no live calls in CI). Vault's `aliases` field is used to add cross-system
@@ -85,6 +90,7 @@ Against real systems:
 make install
 .venv/bin/afterlife init
 .venv/bin/afterlife scan aws --profile my-profile
+.venv/bin/afterlife scan cloudtrail --profile my-profile   # enrich AWS usage
 .venv/bin/afterlife scan gcp --project my-project
 .venv/bin/afterlife scan github --org my-org --token $GITHUB_TOKEN
 .venv/bin/afterlife scan gitlab --group my-group --token $GITLAB_TOKEN
@@ -299,7 +305,7 @@ text). The dashboard wraps the same readers behind FastAPI. Details in
 
 ```
 src/afterlife/
-├── collectors/    9 collectors, one file each
+├── collectors/    9 source collectors + a CloudTrail usage-enrichment pass
 ├── rules/         14 detection rules, one file each, decorator-registered
 ├── graph/         Identity graph (NetworkX), email + Vault-alias linking
 ├── scoring/       Blast-radius scoring with explainable factors
