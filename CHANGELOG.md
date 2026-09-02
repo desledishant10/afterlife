@@ -5,6 +5,14 @@ or two commits and one or two of the milestones below.
 
 ## Unreleased
 
+### Dashboard
+
+- New **Trends** page: charts finding history from the lifecycle timestamps
+  (`first_seen` / `resolved_at`) -- open findings over time by severity, the
+  new-vs-resolved flow per period, and headline stats (open now, seen ever,
+  resolved, median days to resolve). Rendered server-side as CSS bars, so it
+  stays within the dashboard's strict CSP with no charting dependency
+
 ### Detection
 
 - New rule **STALE-OAUTH** (High): an active third-party OAuth grant with a

@@ -15,6 +15,31 @@ def test_dashboard_open_without_auth_by_default(fresh_db):
     assert _client(fresh_db).get("/").status_code == 200
 
 
+def test_trends_page_renders_with_history(fresh_db):
+    _seed(
+        fresh_db,
+        findings=[
+            Finding(
+                rule_id="OFFBOARDED-OWNER",
+                severity=Severity.CRITICAL,
+                title="ghost key",
+                description="",
+                evidence={"credential_id": "AKIA-1"},
+            )
+        ],
+    )
+    r = _client(fresh_db).get("/trends")
+    assert r.status_code == 200
+    assert "Open findings over time" in r.text
+    assert "trend-chart" in r.text
+
+
+def test_trends_page_empty_state(fresh_db):
+    r = _client(fresh_db).get("/trends")
+    assert r.status_code == 200
+    assert "Nothing to chart yet" in r.text
+
+
 def test_dashboard_requires_basic_auth_when_password_set(fresh_db):
     client = TestClient(create_app(fresh_db, auth_password="s3cret"))
 

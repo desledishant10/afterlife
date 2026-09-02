@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,7 @@ from afterlife import __version__, db
 from afterlife.graph.identity_graph import IdentityGraph, Person
 from afterlife.scan_runs import latest_per_source, list_runs
 from afterlife.web.middleware import BasicAuthMiddleware, SecurityHeadersMiddleware
+from afterlife.web.trends import compute_trends
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -114,6 +116,25 @@ def create_app(db_path: Path, *, auth_password: str | None = None, oidc=None) ->
                 "cross_source_count": len(cross_source),
                 "top_findings": top,
                 "last_runs": last_runs,
+            },
+        )
+
+    @app.get("/trends", response_class=HTMLResponse)
+    def trends_page(request: Request):
+        with db.connect(app.state.db_path) as conn:
+            rows = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT severity, first_seen, last_seen, resolved_at, status "
+                    "FROM findings"
+                )
+            ]
+        return templates.TemplateResponse(
+            request=request,
+            name="trends.html",
+            context={
+                "version": __version__,
+                "t": compute_trends(rows, datetime.now(UTC)),
             },
         )
 

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Afterlife: Trends{% endblock %}
+{% block content %}
+
+<h1>Trends</h1>
+{% if t.empty %}
+<p class="meta">No finding history yet. Run <code>afterlife analyze</code> over
+time (or on a schedule with <code>afterlife watch</code>) and this page fills
+in as findings appear and resolve.</p>
+<div class="empty">Nothing to chart yet.</div>
+{% else %}
+<p class="meta">Finding history from {{ t.range_start }} to {{ t.range_end }}.</p>
+
+<div class="row">
+  <div class="metric"><span class="count">{{ t.open_now }}</span><span class="label">Open now</span></div>
+  <div class="metric"><span class="count">{{ t.total_ever }}</span><span class="label">Seen ever</span></div>
+  <div class="metric"><span class="count">{{ t.resolved_total }}</span><span class="label">Resolved</span></div>
+  <div class="metric"><span class="count">{{ t.median_ttr_days if t.median_ttr_days is not none else "—" }}</span><span class="label">Median days to resolve</span></div>
+</div>
+
+<h2>Open findings over time</h2>
+{% if t.max_open > 0 %}
+<div class="chart">
+  <div class="trend-chart" role="img" aria-label="Open findings over time by severity">
+    {% for b in t.buckets %}
+    <div class="trend-col" title="{{ b.label }}: {{ b.open_total }} open ({{ b.open.critical }}C {{ b.open.high }}H {{ b.open.medium }}M {{ b.open.low }}L)">
+      {% for sev in ["critical", "high", "medium", "low"] %}
+      {% if b.open[sev] > 0 %}<div class="trend-seg {{ sev }}" style="height: {{ (b.open[sev] / t.max_open * 100) }}%;"></div>{% endif %}
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="trend-axis"><span>{{ t.buckets[0].label }}</span><span>{{ t.buckets[-1].label }}</span></div>
+  <div class="legend">
+    <span class="legend-item"><span class="swatch critical"></span>critical</span>
+    <span class="legend-item"><span class="swatch high"></span>high</span>
+    <span class="legend-item"><span class="swatch medium"></span>medium</span>
+    <span class="legend-item"><span class="swatch low"></span>low</span>
+  </div>
+</div>
+{% else %}
+<div class="empty">No open findings in the recorded window.</div>
+{% endif %}
+
+<h2>New vs resolved per period</h2>
+{% if t.max_flow > 0 %}
+<div class="chart">
+  <div class="flow-chart" role="img" aria-label="New versus resolved findings per period">
+    {% for b in t.buckets %}
+    <div class="flow-col" title="{{ b.label }}: +{{ b.new }} new, -{{ b.resolved }} resolved">
+      <div class="flow-bar new" style="height: {{ (b.new / t.max_flow * 100) if b.new else 0 }}%;"></div>
+      <div class="flow-bar resolved" style="height: {{ (b.resolved / t.max_flow * 100) if b.resolved else 0 }}%;"></div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="trend-axis"><span>{{ t.buckets[0].label }}</span><span>{{ t.buckets[-1].label }}</span></div>
+  <div class="legend">
+    <span class="legend-item"><span class="swatch new"></span>new</span>
+    <span class="legend-item"><span class="swatch resolved"></span>resolved</span>
+  </div>
+</div>
+{% else %}
+<div class="empty">No finding activity in the recorded window.</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}
