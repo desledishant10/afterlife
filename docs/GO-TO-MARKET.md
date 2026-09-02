@@ -2,6 +2,23 @@
 
 > Strategy draft, 2026-09. A living document, not a contract: revisit each
 > section as real signal (stars, installs, sales conversations) comes in.
+>
+> **Reconciled 2026-09-02 to the shipped product (v0.3.0, 16 rules).** Facts,
+> version labels, and shipped-vs-roadmap status were corrected, and stray
+> monthly price figures were aligned to the single authoritative Pricing
+> section. Two changes are decisions for the founder, not edits, and are called
+> out where they land:
+>
+> 1. **The open-core line moved.** STALE-OAUTH, PRIVILEGE-DRIFT, and the
+>    CloudTrail enrichment shipped in the *free* core, not as the Pro
+>    "heavier-data" rules this plan reserved them as. That is faithful to the
+>    "never paywall detection" principle, but it leaves Pro as dashboard auth +
+>    SSO/OIDC + Jira (all shipped). Name the replacement Pro levers before the
+>    pricing page goes live: retention/trend analytics, multi-project, and
+>    PagerDuty/ServiceNow are the standing candidates.
+> 2. **Confirm the pricing regime.** The Pricing section is authoritative:
+>    $990 founding / $1,900 list / $6,000+ Enterprise, flat per organization,
+>    annual. Confirm that is current so the page and targets can be finalized.
 
 **Product in one line.** Afterlife is the cross-source access review that your
 CSPM and your IdP each do half of: it joins cloud IAM keys, code-host access,
@@ -97,17 +114,17 @@ The single rule that governs every future packaging decision: **you pay for team
 
 ### The principle
 
-Everything through the current core stays free forever: all 9 collectors, the cross-source identity graph, all 11 shipped detection rules, blast-radius scoring, monitoring with finding history (new / reopened / resolved, first-seen / last-seen), alerting (Slack, webhook, email), `run` / `watch` continuous mode, Docker, all four report formats (JSON, HTML, SARIF, PDF), and the local read-only dashboard. Free is the full audit, not a teaser.
+Everything through the current core stays free forever: all 9 collectors, the cross-source identity graph, all 16 shipped detection rules, blast-radius scoring, monitoring with finding history (new / reopened / resolved, first-seen / last-seen), alerting (Slack, webhook, email), `run` / `watch` continuous mode, Docker, all four report formats (JSON, HTML, SARIF, PDF), and the local read-only dashboard. Free is the full audit, not a teaser.
 
 A feature is only eligible for Pro if it passes one of three tests:
 
 1. **Team / enterprise.** It exists because more than one human, or a security or compliance function, shares the tool (dashboard auth, SSO, ticketing integrations, a support SLA).
 2. **Scale.** It exists because there are many projects, accounts, or a long history to manage (multi-project, long-horizon retention and trends).
-3. **Heavier data.** It requires a materially heavier new data pipeline than the free collectors (STALE-OAUTH needs an OAuth grant inventory, PRIVILEGE-DRIFT needs CloudTrail). Anything computable from data Afterlife already collects stays free.
+3. **Heavier data.** It requires a materially heavier new data pipeline than the free collectors. (STALE-OAUTH's OAuth-grant inventory, PRIVILEGE-DRIFT, and the CloudTrail enrichment were once reserved under this test but shipped in the free core instead; see the reconciliation note at the top.) Anything computable from data Afterlife already collects stays free.
 
 Four anti-cripple guarantees make the line credible and are worth stating out loud in the README and the pricing page:
 
-- The 11 shipped rules stay free forever. No new rule that runs on already-collected data will ever move behind Pro.
+- The 16 shipped rules stay free forever. No new rule that runs on already-collected data will ever move behind Pro.
 - No finding is ever hidden by edition. Pro never changes what the free tier detects or reports.
 - No source system is paywalled. All 9 collectors are free; Pro never gates a data source.
 - Alerting stays free. Turning Afterlife into a continuous monitor never costs money; only the team and scale surface around it does.
@@ -120,7 +137,7 @@ Put plainly: Pro makes Afterlife easier to run at team scale. It never makes the
 |---|:---:|:---:|
 | All 9 collectors (AWS, GCP, GitHub, GitLab, Google Workspace, Entra, Okta, Slack, Vault) | Yes | Yes |
 | Cross-source identity graph (email + Vault-alias linking) | Yes | Yes |
-| All 11 shipped detection rules | Yes | Yes |
+| All 16 shipped detection rules | Yes | Yes |
 | Blast-radius scoring with explainable factors | Yes | Yes |
 | Monitoring + finding history (new / reopened / resolved, first / last seen) | Yes | Yes |
 | Alerting: Slack, generic webhook, email (SMTP) | Yes | Yes |
@@ -129,14 +146,20 @@ Put plainly: Pro makes Afterlife easier to run at team scale. It never makes the
 | Allowlist / suppression | Yes | Yes |
 | Local read-only dashboard (all 8 pages) | Yes | Yes |
 | Dashboard authentication (`afterlife serve --require-auth`) | No | Yes (shipped) |
-| SSO / OIDC dashboard login | No | Yes (roadmap) |
-| Long-horizon retention + trend analytics (MTTR, burn-down) | Current state + since-last-run delta | Extended retention windows + trend views |
-| Ticketing / on-call integrations (Jira, PagerDuty, ServiceNow) | No | Yes (roadmap) |
+| SSO / OIDC dashboard login | No | Yes (shipped) |
+| Long-horizon retention + trend analytics (MTTR, burn-down) | Current state + since-last-run delta | Extended retention windows + trend views (roadmap) |
+| Ticketing / on-call integrations | No | Jira (shipped); PagerDuty, ServiceNow (roadmap) |
 | Multi-project / multi-config from one install | Single project | Yes (roadmap) |
-| Advanced rules needing heavier data (STALE-OAUTH, PRIVILEGE-DRIFT) | No | Yes (roadmap) |
+| Advanced rules (STALE-OAUTH, PRIVILEGE-DRIFT) | Yes (shipped free) | Yes |
 | Priority support (light SLA) | Community / issues | Yes |
 
 ### Pro roadmap: what to build after dashboard auth
+
+> **Status update (2026-09-02):** items 1 (SSO/OIDC) and 3 (Jira) have shipped
+> and are gated in `licensing.py`; item 5's advanced rules (STALE-OAUTH,
+> PRIVILEGE-DRIFT) shipped in the *free* core instead. The remaining live Pro
+> roadmap is retention/trend analytics, multi-project, and PagerDuty/ServiceNow.
+> The ranking below is kept as the original decision trail.
 
 Ranked by willingness-to-pay against build effort, with the solo-founder constraints (minimal build, minimal ops, recurring revenue, no credential custody) as tie-breakers.
 
@@ -157,7 +180,7 @@ Ranked by willingness-to-pay against build effort, with the solo-founder constra
 
 **4. Multi-project / multi-config.** Higher effort (DB scoping, dashboard routing, `run` / `watch` all need project awareness) for a narrower but well-paying audience: MSPs, security consultancies, and orgs juggling many AWS accounts or staging-vs-prod. This is the textbook "scale" feature and fits the Pro principle exactly. Build it when there is visible pull from that segment, not before.
 
-**5. Advanced rules: STALE-OAUTH, then PRIVILEGE-DRIFT.** Highest latent value, highest effort, so they anchor the back of the roadmap. Each needs a genuinely new data pipeline: STALE-OAUTH wants per-user OAuth grant enumeration (Google tokens endpoint, Slack `admin.users.list` with apps), PRIVILEGE-DRIFT wants CloudTrail or IAM Access Analyzer usage data, which is high-volume and the widest new IAM read scope. Do STALE-OAUTH first because its data source is lighter. This is the most delicate line to draw against "never cripple the core," so the framing must be explicit: these are Pro because they require heavier data collection, not because detection is being paywalled, and the 11 existing rules never move.
+**5. Advanced rules: STALE-OAUTH, then PRIVILEGE-DRIFT.** Highest latent value, highest effort, so they anchor the back of the roadmap. Each needs a genuinely new data pipeline: STALE-OAUTH wants per-user OAuth grant enumeration (Google tokens endpoint, Slack `admin.users.list` with apps), PRIVILEGE-DRIFT wants CloudTrail or IAM Access Analyzer usage data, which is high-volume and the widest new IAM read scope. Do STALE-OAUTH first because its data source is lighter. This is the most delicate line to draw against "never cripple the core," so the framing must be explicit: these are Pro because they require heavier data collection, not because detection is being paywalled, and the 16 existing rules never move.
 
 **Priority support** is not an engineering item and does not compete for the build sequence. Turn it on the day Pro has its first paying customer, bundled into the price as a light SLA (for example, 2-business-day email), kept deliberately low-touch so it never becomes an on-call obligation for a solo founder.
 
@@ -215,7 +238,7 @@ The list number is grounded in real self-hosted, license-key comps for dev and s
 | Vanta / Drata | Compliance SaaS | roughly $10k to $30k+/yr | The real size of a security budget. $1,900 is noise next to it |
 | Metabase Pro (self-hosted) | Seat-banded | historically near $10k/yr to start | The ceiling to avoid: that price needs a sales motion |
 
-$1,900 lands deliberately between Sidekiq Pro and Sidekiq Enterprise. Security tooling supports higher willingness to pay than a background job queue, which argues up from Sidekiq Pro; Afterlife is `v0.1`, solo-maintained, with one shipped Pro feature so far, which argues against reaching for enterprise numbers. It clears the "is this serious" bar (a $99 tool reads as a hobby to a security team and earns no trust) and sits under the roughly $2,500 line where a purchase stops being a credit-card yes and starts triggering a PO, procurement, and a vendor questionnaire. Staying a card swipe is the entire point.
+$1,900 lands deliberately between Sidekiq Pro and Sidekiq Enterprise. Security tooling supports higher willingness to pay than a background job queue, which argues up from Sidekiq Pro; Afterlife is early-stage and solo-maintained, with a small shipped Pro set (dashboard auth, SSO/OIDC, Jira), which argues against reaching for enterprise numbers. It clears the "is this serious" bar (a $99 tool reads as a hobby to a security team and earns no trust) and sits under the roughly $2,500 line where a purchase stops being a credit-card yes and starts triggering a PO, procurement, and a vendor questionnaire. Staying a card swipe is the entire point.
 
 The honest launch price is lower, because today Pro is dashboard authentication plus priority support and the rest (SSO/OIDC, STALE-OAUTH, PRIVILEGE-DRIFT, Jira/PagerDuty/ServiceNow, retention and trend history, multi-project) is roadmap. Selling $1,900 against dashboard auth alone would be selling a promise at full price. So the launch offer is a **founding license at $990/year, locked for life for the first 50 organizations.** $990 is a clean sub-$1,000 card purchase, it is a real reason to buy now, it rewards early buyers who are partly funding the roadmap, and it quietly validates $1,900 as the rate everyone else pays later. Raise the headline to $1,900 only after SSO/OIDC plus at least one of STALE-OAUTH or PRIVILEGE-DRIFT have shipped; founding customers keep $990 forever.
 
@@ -249,8 +272,8 @@ You are one person with little cash and a job hunt running in parallel. So this 
 
 ### Pre-launch checklist (finish all of this before you tell anyone)
 
-- **Ship `afterlife-audit` to PyPI cleanly.** Do a TestPyPI dry run through the existing Trusted-Publishing workflow, then cut the real `v0.1.0` tag. Verify in a throwaway virtualenv that `pip install afterlife-audit` then `afterlife --version` and `afterlife --help` work with zero repo checkout. A broken `pip install` on launch day is the one mistake you cannot recover from, so test it from a clean machine or a fresh Docker `python:3.12-slim`.
-- **Cut a GitHub Release for v0.1.0.** Paste the CHANGELOG v0.1 highlights, embed `demo.gif`, and link the PLAYBOOK. Releases show up in feeds and give the repo a "this is real and versioned" signal.
+- **Ship `afterlife-audit` to PyPI cleanly.** Do a TestPyPI dry run through the existing Trusted-Publishing workflow, then cut the real `v0.3.0` tag. Verify in a throwaway virtualenv that `pip install afterlife-audit` then `afterlife --version` and `afterlife --help` work with zero repo checkout. A broken `pip install` on launch day is the one mistake you cannot recover from, so test it from a clean machine or a fresh Docker `python:3.12-slim`.
+- **Cut a GitHub Release for v0.3.0.** Paste the CHANGELOG v0.3.0 highlights, embed `demo.gif`, and link the PLAYBOOK. Releases show up in feeds and give the repo a "this is real and versioned" signal.
 - **README above the fold is already strong; tighten the first screen.** The `demo.gif` (900 KB, fine) should be the first visual, the one-line pitch ("credentials that outlive their owners") first, the cross-source paragraph second. Add a copy-pasteable `pip install afterlife-audit && afterlife --help` and the `make demo` line high up, because the demo produces 20 real findings in about a minute and that is your whole conversion pitch.
 - **Set repo metadata.** Description, topics (`iam`, `identity`, `offboarding`, `detection-engineering`, `aws`, `okta`, `security`, `self-hosted`), and a social-preview/OG image (reuse an overview screenshot with the tagline) so every shared link renders a card instead of a bare URL.
 - **Turn on GitHub Discussions** with Q&A, Ideas, and Show and tell categories. This is where "does it support X?" lands instead of cluttering Issues, and an active Discussions tab reads as a live project to both users and employers.
@@ -262,7 +285,7 @@ You are one person with little cash and a job hunt running in parallel. So this 
 
 Each channel wants a different first sentence. Same product, different door.
 
-- **Hacker News (the anchor).** Title: `Show HN: Afterlife, find credentials that outlive their owners`. Post Tuesday or Wednesday, roughly 8 to 10am ET (skip the US Labor Day Monday, Sept 7). Link the repo, not the landing page. Immediately add a maker comment: the honest backstory (solo dev, built it because offboarding leaves live keys everywhere, and yes it doubles as portfolio and a small product), the technical wedge (an AWS key active locally while its owner is suspended in the IdP, caught only by joining the two), what is free forever vs the one Pro feature today, and a direct ask for the harshest technical critique. Then clear your calendar and answer every comment for the whole day. Lead with the mechanism, not the business model.
+- **Hacker News (the anchor).** Title: `Show HN: Afterlife, find credentials that outlive their owners`. Post Tuesday or Wednesday, roughly 8 to 10am ET (skip the US Labor Day Monday, Sept 7). Link the repo, not the landing page. Immediately add a maker comment: the honest backstory (solo dev, built it because offboarding leaves live keys everywhere, and yes it doubles as portfolio and a small product), the technical wedge (an AWS key active locally while its owner is suspended in the IdP, caught only by joining the two), what is free forever vs the Pro tier (dashboard auth, SSO/OIDC, Jira), and a direct ask for the harshest technical critique. Then clear your calendar and answer every comment for the whole day. Lead with the mechanism, not the business model.
 - **r/netsec.** Strict, allergic to "check out my tool." Submit teardown post #2 as technical content, tool mentioned once at the end. The writeup is the submission; the repo is a footnote.
 - **r/devops.** Frame around the ops pain: "after someone leaves, can you actually prove no live keys are left across AWS, GitHub, and Okta?" Emphasize self-hosted, free core, SARIF into CI, and `run`/`watch` as a cron monitor. Practical, not academic.
 - **r/selfhosted.** Their exact love language: runs on your own box, Docker one-liner, local dashboard, and critically never custodies your cloud keys or phones home (no license server, offline verification). Lead with a dashboard screenshot and the `docker run` line.
@@ -272,7 +295,7 @@ Each channel wants a different first sentence. Same product, different door.
 
 ### Week by week (weeks 1 through 6, starting the week of Sept 1)
 
-- **Week 1, foundation and soft launch.** Publish to PyPI and verify the clean install. Cut the v0.1.0 release. Stand up the landing page and email capture. Enable Discussions, set topics and the OG image. Publish teardown #1 (Uber -> `OFFBOARDED-OWNER`) to the blog, dev.to, and your site. Post the build-in-public thread and seed the first stars. Do not touch HN yet.
+- **Week 1, foundation and soft launch.** Publish to PyPI and verify the clean install. Cut the v0.3.0 release. Stand up the landing page and email capture. Enable Discussions, set topics and the OG image. Publish teardown #1 (Uber -> `OFFBOARDED-OWNER`) to the blog, dev.to, and your site. Post the build-in-public thread and seed the first stars. Do not touch HN yet.
 - **Week 2, the Show HN.** Tue or Wed morning: post the Show HN and spend the day in the thread. Publish teardown #2 (Snowflake/Okta -> stale-credential rules). Two or three days later, not the same day, post to r/selfhosted with the Docker and no-custody framing. Fold the best HN criticism into a same-week patch and say so publicly.
 - **Week 3, Reddit and lobste.rs.** Submit teardown #2 to r/netsec. Post the ops framing to r/devops. Submit the graph-layer essay to lobste.rs with your invite. Pitch all the newsletters now, citing the live posts and whatever HN and Reddit numbers you got.
 - **Week 4, newsletters land and Product Hunt.** Newsletter mentions surface this week (they publish weekly), which is your second traffic wave, so be ready to answer the issues and Discussions it brings. Launch on Product Hunt on Tuesday and email your signups to come support. Ship one visible, feedback-driven improvement (a requested collector tweak, a new rule, a real fix) and post "you asked, shipped" to give repeat visitors a reason to return.
@@ -286,7 +309,7 @@ The product already contains its own upgrade trigger, so the funnel is short:
 2. **Lurker to user.** The conversion event is `make demo` or a real scan producing findings. Keep that path frictionless: `pip install afterlife-audit`, `make demo`, 20 findings in about a minute. Someone who points it at their own org and gets real ghost access back is your buyer.
 3. **User to buyer, built in.** The moment a team wants to expose that dashboard to more than one person, they hit `afterlife serve --require-auth`, which is Pro. That upsell already lives in the product, so your first paying customer is a small security or platform team that found real findings and now wants to share the view safely.
 4. **Design-partner motion.** Do not wait for self-serve. DM or email the handful who engaged deeply (detailed issues, HN replies, waitlist notes), give them a free license, and ask what would make them pay. Turn those answers into the next Pro feature. One of these warm relationships, not cold Product Hunt traffic, becomes your first real invoice.
-5. **Low-ops storefront.** Use LemonSqueezy or Polar as merchant of record so they handle VAT and tax (that is the "less looking out" part). On purchase, a webhook triggers `scripts/issue_license.py`, mints the Ed25519 key, and emails it automatically. No license server, nothing phones home, which is the whole point of the offline design. Pricing to start: self-hosted Pro at roughly $15/mo or $150/yr per team (unlimited seats, since you custody nothing), plus an early-adopter lifetime deal (for example $99 for the first 25 buyers) to pull in cash, logos, and testimonials fast. Frame the lifetime tier as a launch-only tactic and steer the durable business to annual, which is the recurring revenue you actually want.
+5. **Low-ops storefront.** Use LemonSqueezy or Polar as merchant of record so they handle VAT and tax (that is the "less looking out" part). On purchase, a webhook triggers `scripts/issue_license.py`, mints the Ed25519 key, and emails it automatically. No license server, nothing phones home, which is the whole point of the offline design. Pricing follows the Pricing section, not a separate monthly figure: the $990/year founding license (first 50 organizations, price locked for life), rising to the $1,900/year standard once SSO plus an advanced rule are the paid draw, billed annually through the merchant of record. Steer every buyer to that annual license; it is the recurring revenue the model is built around.
 
 Realistic expectation: single digits of paying customers in the first quarter, and the first one almost certainly arrives through a warm thread, not a cold funnel.
 
@@ -387,7 +410,7 @@ Ignore the funnel top as a KPI. In year one the only numbers worth steering by a
 
 1. **Activation evidence, qualitative.** Count the times someone says "it caught a real ghost credential." Five credible "it found a key from an offboarded contractor" stories are worth more than 2,000 stars, both for the roadmap and for the job hunt (they are the interview and building-in-public content).
 2. **Teams running `watch` continuously.** The closest free-tier proxy to a future customer.
-3. **First paying customers and the reason each paid.** With dashboard auth as the only Pro feature today, the *why* matters more than the count: if every buyer bought to safely expose the dashboard to a team, that validates the SSO/OIDC and multi-config roadmap; if nobody will pay for auth alone, you learn that before building more.
+3. **First paying customers and the reason each paid.** With a small Pro set today (dashboard auth, SSO/OIDC, Jira), the *why* matters more than the count: if buyers pay to expose the dashboard to a team behind SSO, that validates the team-access wedge and the multi-config roadmap; if nobody will pay for team access alone, you learn that before building more.
 4. **Net paying logos (not MRR curves).** At this scale MRR moves one customer at a time, so track logos and reasons, not a smoothed revenue chart.
 
 Downloads, stars, and MRR-to-two-decimals are reporting theater at this stage. Watch them monthly, optimize none of them.
@@ -403,12 +426,16 @@ For a solo, self-hosted, open-core security tool with a niche wedge, launched vi
 | Ran `analyze` on real infra | 40-120 | 300+ | inferred (Discussions, issues, Discord) |
 | Teams running `watch` continuously | 8-20 | 40-60 | inferred / design-partner convos |
 | Paying Pro customers | 3-12 | 25-40 | storefront |
-| List price (self-hosted Pro) | $19/mo or $190/yr per deployment, rising to $29-49 as Pro fills out (SSO, advanced rules, retention) | same | you set it |
-| MRR (exit) | $60-230 | $700-1,200 | storefront |
-| ARR (exit) | ~$1k-3k | ~$9k-14k | storefront |
-| Gross monthly churn | one cancel = 8-15% | <5% | storefront |
+| List price (self-hosted Pro) | $990/yr founding, $1,900/yr standard, flat per organization | same | you set it |
+| ARR (exit) | ~$3k-12k | ~$25k-75k | storefront |
+| Annualized MRR (exit) | ~$250-1,000 | ~$2k-6k | storefront |
+| Gross annual churn | one cancel = 8-15% | <5% | storefront |
 
-The honest framing for the founder and for interviews: **year one is not a business, it is proof the wedge converts.** A few thousand in ARR from a self-hosted open-core tool built solo, plus a portfolio centerpiece that demonstrably caught real ghost access, is a genuinely good year-one outcome. The revenue matters less than the evidence that people will pay for the cross-source angle at all, which is what tells you whether to invest the next year.
+Revenue rows are derived: paying-customer targets times the flat annual license
+($990 founding, blending toward $1,900 as the list rate), so they scale with the
+Pricing section rather than the old monthly figure.
+
+The honest framing for the founder and for interviews: **year one is not a business, it is proof the wedge converts.** A few thousand to low five figures in ARR from a self-hosted open-core tool built solo, plus a portfolio centerpiece that demonstrably caught real ghost access, is a genuinely good year-one outcome. The revenue matters less than the evidence that people will pay for the cross-source angle at all, which is what tells you whether to invest the next year.
 
 ### Fulfillment: which storefront issues the keys
 
