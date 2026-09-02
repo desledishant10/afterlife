@@ -12,6 +12,7 @@ interval_seconds: 3600
 # sources have credentials configured in the environment.
 sources:
   - aws
+  - cloudtrail  # enrichment: sharpens AWS usage data; always runs after aws
   - github
   - idp        # provider chosen by IDP_PROVIDER (google | okta | azure)
   - slack

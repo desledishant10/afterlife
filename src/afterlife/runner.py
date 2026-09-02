@@ -152,9 +152,22 @@ SOURCE_BUILDERS: dict[str, Builder] = {
     "idp": _build_idp,
 }
 
-# Enrichment sources are opt-in (they add no identities and lean on another
-# source running first), so auto-detection does not include them.
-_AUTODETECT_SKIP = frozenset({"cloudtrail"})
+# Enrichment sources add no identities of their own; they annotate credentials
+# another source already collected. So they are excluded from auto-detection
+# (opt-in only) and always run last, after the sources they enrich.
+_ENRICHMENT_SOURCES = frozenset({"cloudtrail"})
+
+
+def _order_sources(sources: list[str]) -> list[str]:
+    """Move enrichment sources to the end, preserving relative order otherwise.
+
+    CloudTrail only annotates AWS credentials that already exist in the DB, so a
+    config that lists it before (or without) aws would silently enrich nothing.
+    Sorting enrichment last makes the pipeline order-insensitive.
+    """
+    base = [s for s in sources if s not in _ENRICHMENT_SOURCES]
+    enrich = [s for s in sources if s in _ENRICHMENT_SOURCES]
+    return base + enrich
 
 
 def detect_sources(env: Env, builders: dict[str, Builder] | None = None) -> list[str]:
@@ -162,7 +175,7 @@ def detect_sources(env: Env, builders: dict[str, Builder] | None = None) -> list
     builders = builders or SOURCE_BUILDERS
     found = []
     for name, build in builders.items():
-        if name in _AUTODETECT_SKIP:
+        if name in _ENRICHMENT_SOURCES:
             continue
         try:
             build(Path("unused.db"), env)
@@ -232,7 +245,7 @@ def run_pipeline(
     # should not have to run `afterlife init` first. Idempotent.
     db.init_db(config.db_path)
 
-    for name in config.sources:
+    for name in _order_sources(config.sources):
         build = builders.get(name)
         if build is None:
             result.sources.append(SourceResult(name, error="unknown source"))

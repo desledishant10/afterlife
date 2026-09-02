@@ -171,3 +171,13 @@ def test_cloudtrail_is_opt_in_not_autodetected():
     detected = detect_sources({})
     assert "aws" in detected
     assert "cloudtrail" not in detected
+
+
+def test_order_sources_moves_enrichment_last():
+    from afterlife.runner import _order_sources
+    # cloudtrail listed first still runs after aws/github (it enriches them).
+    assert _order_sources(["cloudtrail", "aws", "github"]) == ["aws", "github", "cloudtrail"]
+    # order among non-enrichment sources is preserved.
+    assert _order_sources(["github", "aws"]) == ["github", "aws"]
+    # no enrichment sources -> unchanged.
+    assert _order_sources(["aws"]) == ["aws"]

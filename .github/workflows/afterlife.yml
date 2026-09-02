@@ -5,15 +5,19 @@ name: Afterlife credential audit
 # (via SARIF) and as a downloadable HTML report (artifact).
 #
 # Required configuration:
+#   Repository variables:
+#     AFTERLIFE_SCAN_ENABLED        Set to "true" to turn this audit on. Until
+#                                   then the job is skipped, so the schedule does
+#                                   not fail on unconfigured secrets.
+#     AFTERLIFE_GH_ORG              GitHub org slug to scan.
+#     AFTERLIFE_GOOGLE_ADMIN        Super-admin email to impersonate.
 #   Repository secrets:
 #     AFTERLIFE_AWS_ROLE_ARN        IAM role to assume via OIDC, with iam:Get*,
-#                                   iam:List*, and access to credential reports.
+#                                   iam:List*, cloudtrail:LookupEvents, and
+#                                   access to credential reports.
 #     AFTERLIFE_GH_TOKEN            Fine-grained PAT with org:read, repo
 #                                   administration:read, repo metadata:read.
 #     AFTERLIFE_GOOGLE_SA_JSON      Full service account JSON, single-line.
-#   Repository variables:
-#     AFTERLIFE_GH_ORG              GitHub org slug to scan.
-#     AFTERLIFE_GOOGLE_ADMIN        Super-admin email to impersonate.
 
 on:
   schedule:
@@ -30,6 +34,9 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Opt-in gate: skip (not fail) until the repo owner wires up credentials and
+    # sets AFTERLIFE_SCAN_ENABLED=true. Keeps the schedule from going red.
+    if: vars.AFTERLIFE_SCAN_ENABLED == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +60,9 @@ jobs:
 
       - name: Scan AWS
         run: afterlife scan aws
+
+      - name: Enrich AWS usage from CloudTrail
+        run: afterlife scan cloudtrail
 
       - name: Scan GitHub organization
         env:
