@@ -5,6 +5,14 @@ or two commits and one or two of the milestones below.
 
 ## Unreleased
 
+## v0.3.0 (September 2026)
+
+Deepens detection and sharpens the low-ops path. Adds a CloudTrail
+usage-enrichment collector and folds its ground-truth usage into
+PRIVILEGE-DRIFT, ships five new rules (STALE-OAUTH, ORPHANED-GITHUB,
+PRIVILEGE-DRIFT, PUBLIC-ROLE-TRUST, USER-WITHOUT-MFA), a Trends dashboard, and
+two Pro features (SSO/OIDC, Jira). 16 detection rules, 380+ tests.
+
 ### Collectors
 
 - New **CloudTrail** usage-enrichment collector (`afterlife scan cloudtrail`):
@@ -13,6 +21,15 @@ or two commits and one or two of the milestones below.
   `last_used_at` to real activity. Adds no identities; run it after `scan aws`.
   It sharpens the usage-based rules with audit-log ground truth and is opt-in
   in `run`/`watch` (not auto-detected)
+
+### Automation
+
+- `run`/`watch` now reorder enrichment sources (cloudtrail) to run last, so a
+  config that lists cloudtrail before aws no longer silently enriches nothing;
+  the reference config and the weekly GitHub Action run `scan cloudtrail` after
+  `scan aws`
+- The weekly scheduled audit is now gated behind `AFTERLIFE_SCAN_ENABLED`, so it
+  skips (instead of failing red on a timer) until the owner wires up credentials
 
 ### Dashboard
 

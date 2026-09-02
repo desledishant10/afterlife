@@ -25,7 +25,7 @@ miss it.
 
 ## Status
 
-`v0.2`. 9 source systems collected, 16 detection rules, 380+ tests.
+`v0.3`. 9 source systems collected, 16 detection rules, 380+ tests.
 
 ## Source systems
 
