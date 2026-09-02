@@ -3,6 +3,20 @@
 Notable changes to Afterlife, newest first. Each entry maps roughly to one
 or two commits and one or two of the milestones below.
 
+## Unreleased
+
+### Pro features
+
+- Jira ticketing integration: `afterlife analyze --notify` files a remediation
+  issue for new and reopened findings when the license grants it;
+  configured-but-unlicensed channels are reported with an upsell
+- Single sign-on (OIDC) for the dashboard: `afterlife serve --sso` runs the
+  OpenID Connect Authorization Code + PKCE flow against any standards-compliant
+  provider (Google, Okta, Entra, Auth0, Keycloak), with state/nonce, strict
+  id_token validation, signed session cookies, an optional email/domain
+  allow-list, and open-redirect protection. httpx + pyjwt only, no new
+  dependency
+
 ## v0.2.0 (September 2026)
 
 Turns the v0.1 auditor into a continuously-monitoring, installable, self-hostable
@@ -54,9 +68,6 @@ product with an open-core commercial tier.
   dashboard can be exposed to a team; refused with an upsell on the free tier
 - `scripts/issue_license.py` mints licenses vendor-side (private key never
   committed)
-- Second Pro feature: Jira ticketing integration. `afterlife analyze --notify`
-  files a remediation issue for new and reopened findings when the license
-  grants it; configured-but-unlicensed channels are reported with an upsell
 
 ## v0.1 (May 2026)
 
