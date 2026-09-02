@@ -54,6 +54,14 @@ decrypt() { # decrypt <tool> <in> <out>
   esac
 }
 
+decrypt_stdout() { # decrypt_stdout <tool> <in>  (plaintext to stdout, no temp file)
+  case "$1" in
+    age)     age -d "$2" ;;
+    gpg)     gpg --quiet --decrypt "$2" ;;
+    openssl) openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in "$2" ;;
+  esac
+}
+
 cmd_verify() {
   [ -f "$KEY" ] || die "key not found: $KEY"
   command -v openssl >/dev/null 2>&1 || die "verify needs openssl"
@@ -80,20 +88,20 @@ cmd_backup() {
     die "$out already exists; set FORCE=1 to overwrite"
   fi
 
+  # Clear any leftover round-trip temp files from an interrupted older run.
+  rm -f "$(dirname "$KEY")"/.roundtrip.* 2>/dev/null || true
+
   echo "Encrypting $KEY with: $tool"
   echo "You will be prompted for a passphrase now, and once more to verify."
   echo "Pick a STRONG passphrase and keep it separate from the encrypted file."
   encrypt "$tool" "$KEY" "$out"
   chmod 600 "$out"
 
-  # An untested backup is not a backup: decrypt it and compare byte-for-byte.
-  local tmp
-  tmp="$(mktemp "$(dirname "$KEY")/.roundtrip.XXXXXX")"
-  trap 'rm -f "$tmp"' EXIT
+  # An untested backup is not a backup. Decrypt straight to a pipe and compare
+  # byte-for-byte: the plaintext key is never written to a second file on disk.
   echo "Verifying the backup decrypts and matches the original..."
-  decrypt "$tool" "$out" "$tmp"   # clears $tmp first, then writes the plaintext
-  chmod 600 "$tmp" 2>/dev/null || true
-  cmp -s "$KEY" "$tmp" || die "round-trip FAILED; do not trust $out"
+  cmp -s "$KEY" <(decrypt_stdout "$tool" "$out") ||
+    die "round-trip FAILED; do not trust $out"
 
   echo
   echo "OK: wrote $out ($(wc -c <"$out" | tr -d ' ') bytes) and verified it round-trips."
