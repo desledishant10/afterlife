@@ -317,3 +317,29 @@ def test_user_metadata_preserves_tags(aws_env, fresh_db):
         meta = json.loads(row["metadata"])
         assert meta["tags"]["team"] == "platform"
         assert meta["tags"]["email"] == "alice@example.com"
+
+
+def test_parse_service_access():
+    from datetime import UTC, datetime
+
+    from afterlife.collectors.aws import _parse_service_access
+
+    services = [
+        {
+            "ServiceNamespace": "s3",
+            "ServiceName": "Amazon S3",
+            "LastAuthenticated": datetime(2026, 1, 1, tzinfo=UTC),
+        },
+        {"ServiceNamespace": "ec2", "ServiceName": "Amazon EC2"},  # never used
+        {"ServiceName": "no namespace"},  # skipped: no namespace
+    ]
+    out = _parse_service_access(services)
+    assert len(out) == 2
+    assert out[0] == {
+        "service": "s3",
+        "service_name": "Amazon S3",
+        "last_authenticated": "2026-01-01T00:00:00+00:00",
+    }
+    assert out[1]["service"] == "ec2"
+    assert out[1]["last_authenticated"] is None
+    assert _parse_service_access([]) == []

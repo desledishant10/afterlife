@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from afterlife import db
 from afterlife.config import Config
@@ -13,6 +13,7 @@ from afterlife.rules.offboarded_owner import offboarded_owner
 from afterlife.rules.orphaned_github import orphaned_github
 from afterlife.rules.orphaned_identity import orphaned_identity
 from afterlife.rules.outside_collab_with_aws import outside_collab_with_aws
+from afterlife.rules.privilege_drift import privilege_drift
 from afterlife.rules.stale_deploy_key_write import stale_deploy_key_write
 from afterlife.rules.stale_oauth import is_write_scope, stale_oauth
 from afterlife.rules.unrotated_key import unrotated_key
@@ -764,6 +765,7 @@ def test_rule_registry_discovers_all_rules():
         "STALE-DEPLOY-KEY-WRITE",
         "STALE-OAUTH",
         "ORPHANED-GITHUB",
+        "PRIVILEGE-DRIFT",
     }
 
 
@@ -1265,3 +1267,92 @@ def test_orphaned_github_quiet_for_inactive_token(fresh_db):
     with db.connect(fresh_db) as conn:
         findings = orphaned_github(conn, Config(), _graph(conn))
     assert findings == []
+
+
+# ---------- PRIVILEGE-DRIFT ----------
+
+
+def _svc(name, days_ago=None):
+    last = None
+    if days_ago is not None:
+        last = (datetime.now(UTC) - timedelta(days=days_ago)).isoformat()
+    return {"service": name, "service_name": name, "last_authenticated": last}
+
+
+def _role_with_access(service_access, **kw):
+    base = dict(
+        source="aws",
+        credential_id="arn:aws:iam::123:role/app",
+        credential_type="aws_iam_role",
+        owner_source=None,
+        owner_id=None,
+        metadata={
+            "role_name": "app",
+            "account_id": "123",
+            "service_access": service_access,
+        },
+    )
+    base.update(kw)
+    return Credential(**base)
+
+
+def _drift_config():
+    return Config(privilege_drift_days=90, privilege_drift_min_unused=5)
+
+
+def test_privilege_drift_fires_for_overbroad_role(fresh_db):
+    access = [_svc("s3", days_ago=2)] + [_svc(f"svc{i}") for i in range(6)]
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_with_access(access))
+    with db.connect(fresh_db) as conn:
+        findings = privilege_drift(conn, _drift_config(), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].rule_id == "PRIVILEGE-DRIFT"
+    assert findings[0].evidence["used_services"] == 1
+    assert findings[0].evidence["unused_services"] == 6
+    assert findings[0].evidence["granted_services"] == 7
+
+
+def test_privilege_drift_quiet_when_usage_matches_grants(fresh_db):
+    access = [_svc("s3", days_ago=2), _svc("ec2", days_ago=5)]
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_with_access(access))
+    with db.connect(fresh_db) as conn:
+        findings = privilege_drift(conn, _drift_config(), _graph(conn))
+    assert findings == []
+
+
+def test_privilege_drift_quiet_below_unused_threshold(fresh_db):
+    access = [_svc("s3", days_ago=2), _svc("ec2"), _svc("sqs")]  # 2 unused < 5
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_with_access(access))
+    with db.connect(fresh_db) as conn:
+        findings = privilege_drift(conn, _drift_config(), _graph(conn))
+    assert findings == []
+
+
+def test_privilege_drift_quiet_when_role_never_used(fresh_db):
+    access = [_svc(f"svc{i}") for i in range(8)]  # no used services at all
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_with_access(access))
+    with db.connect(fresh_db) as conn:
+        findings = privilege_drift(conn, _drift_config(), _graph(conn))
+    assert findings == []
+
+
+def test_privilege_drift_quiet_without_access_data(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_with_access([]))  # no Access Advisor data
+    with db.connect(fresh_db) as conn:
+        findings = privilege_drift(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_privilege_drift_old_usage_counts_as_unused(fresh_db):
+    access = [_svc("s3", days_ago=2)] + [_svc(f"svc{i}", days_ago=200) for i in range(6)]
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_with_access(access))
+    with db.connect(fresh_db) as conn:
+        findings = privilege_drift(conn, _drift_config(), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].evidence["unused_services"] == 6

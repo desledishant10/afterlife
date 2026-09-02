@@ -25,7 +25,7 @@ miss it.
 
 ## Status
 
-`v0.2`. 9 source systems collected, 13 detection rules, 340+ tests.
+`v0.2`. 9 source systems collected, 14 detection rules, 350+ tests.
 
 ## Source systems
 
@@ -56,6 +56,7 @@ graph edges directly, even without shared email.
 | `ORPHANED-GITHUB` | High | Active GitHub PAT whose owner is no longer in the org (Enterprise SAML). |
 | `INACTIVE-ADMIN` | High | Admin who hasn't logged in within the inactivity window. |
 | `UNROTATED-KEY` | Medium | Long-lived static cloud key (AWS / GCP) past the rotation threshold. |
+| `PRIVILEGE-DRIFT` | Medium | IAM role granted far more AWS services than it uses (Access Advisor). |
 | `NEVER-USED` | Medium | Active credential past the grace period with no usage record. |
 | `ORPHANED-IDENTITY` | Low | IdP identity with no downstream system presence (hygiene signal). |
 
@@ -298,7 +299,7 @@ text). The dashboard wraps the same readers behind FastAPI. Details in
 ```
 src/afterlife/
 ├── collectors/    9 collectors, one file each
-├── rules/         13 detection rules, one file each, decorator-registered
+├── rules/         14 detection rules, one file each, decorator-registered
 ├── graph/         Identity graph (NetworkX), email + Vault-alias linking
 ├── scoring/       Blast-radius scoring with explainable factors
 ├── reporting/     JSON, HTML, SARIF, PDF

@@ -1,3 +1,4 @@
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,8 @@ from afterlife.collectors.base import Collector
 from afterlife.models import Credential, Identity
 
 EMAIL_TAG_KEYS = ("email", "Email", "owner", "Owner", "owner_email", "OwnerEmail")
+_ACCESS_ADVISOR_POLL_TRIES = 5
+_ACCESS_ADVISOR_POLL_INTERVAL = 1.0
 
 
 class AWSCollector(Collector):
@@ -120,7 +123,32 @@ class AWSCollector(Collector):
                 # list_roles omits RoleLastUsed; get_role fills it in
                 detail = iam.get_role(RoleName=role["RoleName"])["Role"]
                 detail["ScopePolicies"] = self._role_policies(iam, role["RoleName"])
+                detail["ServiceAccess"] = self._service_access(iam, detail["Arn"])
                 yield detail
+
+    def _service_access(self, iam, role_arn: str) -> list[dict[str, Any]]:
+        """Best-effort IAM Access Advisor: granted services and last use.
+
+        Needs iam:GenerateServiceLastAccessedDetails. Not available in every
+        account and unsupported by the test mock, so any failure yields an empty
+        list rather than aborting the scan. Feeds PRIVILEGE-DRIFT.
+        """
+        try:
+            job_id = iam.generate_service_last_accessed_details(Arn=role_arn)["JobId"]
+            detail = iam.get_service_last_accessed_details(JobId=job_id)
+            tries = 0
+            while (
+                detail.get("JobStatus") == "IN_PROGRESS"
+                and tries < _ACCESS_ADVISOR_POLL_TRIES
+            ):
+                time.sleep(_ACCESS_ADVISOR_POLL_INTERVAL)
+                detail = iam.get_service_last_accessed_details(JobId=job_id)
+                tries += 1
+            if detail.get("JobStatus") != "COMPLETED":
+                return []
+            return _parse_service_access(detail.get("ServicesLastAccessed", []))
+        except Exception:
+            return []
 
     def _role_policies(self, iam, role_name: str) -> list[str]:
         scopes: list[str] = []
@@ -199,6 +227,7 @@ class AWSCollector(Collector):
                     "AssumeRolePolicyDocument"
                 ),
                 "account_id": self._account_id,
+                "service_access": role.get("ServiceAccess") or [],
             },
         )
 
@@ -213,3 +242,24 @@ def _find_email(tags: dict[str, str]) -> str | None:
 
 def _iso(dt) -> str | None:
     return dt.isoformat() if dt else None
+
+
+def _parse_service_access(services: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """IAM Access Advisor ServicesLastAccessed -> compact per-service records.
+
+    Each record is {service, service_name, last_authenticated}; a service the
+    role was granted but never used has last_authenticated = None.
+    """
+    out: list[dict[str, Any]] = []
+    for s in services or []:
+        namespace = s.get("ServiceNamespace")
+        if not namespace:
+            continue
+        out.append(
+            {
+                "service": namespace,
+                "service_name": s.get("ServiceName"),
+                "last_authenticated": _iso(s.get("LastAuthenticated")),
+            }
+        )
+    return out
