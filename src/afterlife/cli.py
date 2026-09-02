@@ -459,7 +459,12 @@ def watch(
 @app.command("license")
 def license_cmd() -> None:
     """Show the current edition and license status."""
-    from afterlife.licensing import PRO_FEATURES, current_license
+    from afterlife.licensing import (
+        PRO_CONTACT,
+        PRO_FEATURES,
+        PRO_PRICE,
+        current_license,
+    )
 
     lic = current_license()
     if lic and lic.is_pro:
@@ -482,7 +487,11 @@ def license_cmd() -> None:
     for desc in PRO_FEATURES.values():
         console.print(f"    - {desc}")
     console.print(
-        "\n  Activate with AFTERLIFE_LICENSE=<token> or AFTERLIFE_LICENSE_FILE=<path>."
+        f"\n  [cyan]Get Pro[/cyan] ({PRO_PRICE}): email {PRO_CONTACT} with your "
+        "organization name for a license key."
+    )
+    console.print(
+        "  Activate with AFTERLIFE_LICENSE=<token> or AFTERLIFE_LICENSE_FILE=<path>."
     )
 
 
