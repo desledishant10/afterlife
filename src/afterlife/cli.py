@@ -537,6 +537,11 @@ def serve(
         None, "--password", envvar="AFTERLIFE_DASHBOARD_PASSWORD",
         help="Dashboard password, used with --require-auth.",
     ),
+    sso: bool = typer.Option(
+        False, "--sso",
+        help="Single sign-on via OIDC (Pro). Configure with AFTERLIFE_OIDC_* "
+             "env vars. Mutually exclusive with --require-auth.",
+    ),
 ) -> None:
     """Launch the local web dashboard at http://host:port."""
     import uvicorn
@@ -549,10 +554,53 @@ def serve(
         )
         raise typer.Exit(1)
 
-    auth_password = None
-    if require_auth:
-        from afterlife.licensing import FEATURE_DASHBOARD_AUTH, has_feature
+    if require_auth and sso:
+        console.print("[red]--require-auth and --sso are mutually exclusive.[/red]")
+        raise typer.Exit(1)
 
+    from afterlife.licensing import (
+        FEATURE_DASHBOARD_AUTH,
+        FEATURE_SSO,
+        has_feature,
+    )
+
+    auth_password = None
+    oidc = None
+    if sso:
+        if not has_feature(FEATURE_SSO):
+            console.print(
+                "[red]Single sign-on is a Pro feature.[/red] "
+                "Run `afterlife license` for status; set AFTERLIFE_LICENSE to enable."
+            )
+            raise typer.Exit(1)
+        from afterlife.web.oidc import OIDCConfig
+
+        oidc = OIDCConfig.from_env()
+        if oidc is None:
+            console.print(
+                "[red]--sso needs OIDC configured.[/red] Set AFTERLIFE_OIDC_ISSUER, "
+                "AFTERLIFE_OIDC_CLIENT_ID, AFTERLIFE_OIDC_CLIENT_SECRET, and "
+                "AFTERLIFE_OIDC_REDIRECT_URI (see .env.example)."
+            )
+            raise typer.Exit(1)
+        if not (
+            oidc.allowed_domains or oidc.allowed_emails or oidc.allow_any_account
+        ):
+            console.print(
+                "[red]--sso has no allow-list[/red], so it would admit any account "
+                "your identity provider authenticates. Set "
+                "AFTERLIFE_OIDC_ALLOWED_DOMAINS or AFTERLIFE_OIDC_ALLOWED_EMAILS, or "
+                "set AFTERLIFE_OIDC_ALLOW_ANY_ACCOUNT=1 to allow that on purpose."
+            )
+            raise typer.Exit(1)
+        if not os.environ.get("AFTERLIFE_SESSION_SECRET"):
+            console.print(
+                "[yellow]AFTERLIFE_SESSION_SECRET is unset[/yellow]; using an "
+                "ephemeral one. Sessions reset on restart and will not work across "
+                "multiple workers. Set a fixed secret for production."
+            )
+        console.print("[dim]Single sign-on (OIDC): enabled (Pro).[/dim]")
+    elif require_auth:
         if not has_feature(FEATURE_DASHBOARD_AUTH):
             console.print(
                 "[red]Dashboard authentication is a Pro feature.[/red] "
@@ -568,7 +616,7 @@ def serve(
         auth_password = password
         console.print("[dim]Dashboard authentication: enabled (Pro).[/dim]")
 
-    web_app = create_app(db_path, auth_password=auth_password)
+    web_app = create_app(db_path, auth_password=auth_password, oidc=oidc)
     console.print(
         f"[green]Afterlife dashboard:[/green] http://{host}:{port}  "
         f"[dim](Ctrl+C to stop)[/dim]"

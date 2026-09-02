@@ -39,7 +39,7 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-def create_app(db_path: Path, *, auth_password: str | None = None) -> FastAPI:
+def create_app(db_path: Path, *, auth_password: str | None = None, oidc=None) -> FastAPI:
     app = FastAPI(
         title="Afterlife",
         version=__version__,
@@ -50,7 +50,12 @@ def create_app(db_path: Path, *, auth_password: str | None = None) -> FastAPI:
     app.state.db_path = Path(db_path).resolve()
     # Auth (added first = inner) runs after the security-headers middleware
     # (added last = outer), so even a 401 carries the security headers.
-    if auth_password:
+    # OIDC single sign-on and Basic-auth are mutually exclusive.
+    if oidc is not None:
+        from afterlife.web.oidc import install_oidc
+
+        install_oidc(app, oidc)
+    elif auth_password:
         app.add_middleware(BasicAuthMiddleware, password=auth_password)
     app.add_middleware(SecurityHeadersMiddleware)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

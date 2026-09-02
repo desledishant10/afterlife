@@ -264,6 +264,7 @@ server, nothing phones home):
 | Pro feature | |
 |---|---|
 | Dashboard authentication | `afterlife serve --require-auth` password-protects the dashboard so you can safely expose it to a team |
+| Single sign-on (OIDC) | `afterlife serve --sso` puts the dashboard behind your identity provider (Google, Okta, Entra, Auth0, Keycloak) with an optional email/domain allow-list |
 | Ticketing integrations | Files a Jira issue for new and reopened findings on `afterlife analyze --notify`, turning ghost access into tracked work |
 
 ```bash
