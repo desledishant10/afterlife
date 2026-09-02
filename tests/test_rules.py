@@ -1311,6 +1311,8 @@ def test_privilege_drift_fires_for_overbroad_role(fresh_db):
     assert findings[0].evidence["used_services"] == 1
     assert findings[0].evidence["unused_services"] == 6
     assert findings[0].evidence["granted_services"] == 7
+    # No CloudTrail data present, so the result rests on Access Advisor alone.
+    assert findings[0].evidence["cloudtrail_refined"] is False
 
 
 def test_privilege_drift_quiet_when_usage_matches_grants(fresh_db):
@@ -1356,3 +1358,66 @@ def test_privilege_drift_old_usage_counts_as_unused(fresh_db):
         findings = privilege_drift(conn, _drift_config(), _graph(conn))
     assert len(findings) == 1
     assert findings[0].evidence["unused_services"] == 6
+
+
+def _svc_used(name, days_ago):
+    when = (datetime.now(UTC) - timedelta(days=days_ago)).isoformat()
+    return {"service": name, "last_used": when}
+
+
+def _role_with_access_and_observed(service_access, observed_services):
+    return Credential(
+        source="aws",
+        credential_id="arn:aws:iam::123:role/app",
+        credential_type="aws_iam_role",
+        owner_source=None,
+        owner_id=None,
+        metadata={
+            "role_name": "app",
+            "account_id": "123",
+            "service_access": service_access,
+            "observed_services": observed_services,
+        },
+    )
+
+
+def test_privilege_drift_cloudtrail_rescues_stale_grants(fresh_db):
+    # Access Advisor marks svc0..svc5 as last used 200 days ago, so without
+    # CloudTrail the role would fire with 6 unused. But the audit log shows 4 of
+    # them were actually used 2 days ago, dropping unused to 2 (< 5) -> quiet.
+    access = [_svc("s3", days_ago=2)] + [_svc(f"svc{i}", days_ago=200) for i in range(6)]
+    observed = [_svc_used(f"svc{i}", days_ago=2) for i in range(4)]
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_with_access_and_observed(access, observed))
+    with db.connect(fresh_db) as conn:
+        findings = privilege_drift(conn, _drift_config(), _graph(conn))
+    assert findings == []
+
+
+def test_privilege_drift_cloudtrail_refines_but_still_fires(fresh_db):
+    # CloudTrail rescues only 1 stale service; 5 remain unused -> still fires,
+    # with the evidence flagged as refined by audit-log data.
+    access = [_svc("s3", days_ago=2)] + [_svc(f"svc{i}", days_ago=200) for i in range(6)]
+    observed = [_svc_used("svc0", days_ago=1)]
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_with_access_and_observed(access, observed))
+    with db.connect(fresh_db) as conn:
+        findings = privilege_drift(conn, _drift_config(), _graph(conn))
+    assert len(findings) == 1
+    ev = findings[0].evidence
+    assert ev["used_services"] == 2  # s3 + svc0 (recovered from CloudTrail)
+    assert ev["unused_services"] == 5
+    assert ev["cloudtrail_refined"] is True
+
+
+def test_privilege_drift_cloudtrail_promotes_never_authenticated_service(fresh_db):
+    # A granted service Access Advisor never saw (last_authenticated=None) but
+    # CloudTrail observed recently counts as used, not unused.
+    access = [_svc("s3", days_ago=2)] + [_svc(f"svc{i}") for i in range(6)]
+    observed = [_svc_used("svc0", days_ago=3)]
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_with_access_and_observed(access, observed))
+    with db.connect(fresh_db) as conn:
+        findings = privilege_drift(conn, _drift_config(), _graph(conn))
+    assert findings[0].evidence["used_services"] == 2  # s3 + svc0 via CloudTrail
+    assert findings[0].evidence["unused_services"] == 5

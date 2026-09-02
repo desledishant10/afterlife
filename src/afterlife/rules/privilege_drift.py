@@ -8,10 +8,13 @@ footprint is much larger than their observed usage.
 
 Input: `aws_iam_role` credentials carrying `metadata.service_access`, a list of
 {service, last_authenticated} records from IAM Access Advisor
-(GenerateServiceLastAccessedDetails). A service is "used" if it was accessed
-within `privilege_drift_days` (default 90); the rule fires when a role has an
-observed usage profile (at least one used service) yet at least
-`privilege_drift_min_unused` granted services it does not use.
+(GenerateServiceLastAccessedDetails) for the *granted* services. When the
+CloudTrail collector has also run, each granted service's last-use is refined
+with `metadata.observed_services` (audit-log ground truth): a service counts as
+used if either source saw activity within `privilege_drift_days` (default 90),
+whichever is more recent. The rule fires when a role has an observed usage
+profile (at least one used service) yet at least `privilege_drift_min_unused`
+granted services it does not use.
 """
 
 import json
@@ -23,13 +26,14 @@ from afterlife.rules.registry import rule
 _SAMPLE = 12
 
 
-def _used_recently(last_authenticated, cutoff: datetime) -> bool:
-    if not last_authenticated:
-        return False
+def _parse_dt(value) -> datetime | None:
+    if not value:
+        return None
     try:
-        return datetime.fromisoformat(last_authenticated) >= cutoff
-    except ValueError:
-        return False
+        dt = datetime.fromisoformat(str(value))
+    except (ValueError, TypeError):
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
 @rule(
@@ -59,13 +63,31 @@ def privilege_drift(conn, config, graph) -> list[Finding]:
         service_access = meta.get("service_access") or []
         if not service_access:
             continue
+        # CloudTrail's observed last-use per service (audit-log ground truth),
+        # if the cloudtrail collector has run. Used to refine Access Advisor's
+        # last-accessed, which lags and can under-report recent activity.
+        observed: dict[str, datetime] = {}
+        for o in meta.get("observed_services") or []:
+            svc = o.get("service")
+            when = _parse_dt(o.get("last_used"))
+            if svc and when is not None:
+                observed[svc] = when
         used: list[str] = []
         unused: list[str] = []
         for s in service_access:
-            if _used_recently(s.get("last_authenticated"), cutoff):
-                used.append(s.get("service"))
+            svc = s.get("service")
+            # A service is used if either source saw it within the window; take
+            # the more recent of Access Advisor and CloudTrail.
+            seen = [
+                dt
+                for dt in (_parse_dt(s.get("last_authenticated")), observed.get(svc))
+                if dt is not None
+            ]
+            last_use = max(seen) if seen else None
+            if last_use is not None and last_use >= cutoff:
+                used.append(svc)
             else:
-                unused.append(s.get("service"))
+                unused.append(svc)
         # Needs an observed usage profile plus a material unused surplus, so a
         # role that is simply never used (covered elsewhere) does not fire here.
         if len(used) < 1 or len(unused) < config.privilege_drift_min_unused:
@@ -96,6 +118,7 @@ def privilege_drift(conn, config, graph) -> list[Finding]:
                     "unused_services": len(unused),
                     "unused_sample": sorted(u for u in unused if u)[:_SAMPLE],
                     "threshold_days": config.privilege_drift_days,
+                    "cloudtrail_refined": bool(observed),
                 },
                 suggested_remediation=(
                     "Right-size the role's policies to the services it actually "

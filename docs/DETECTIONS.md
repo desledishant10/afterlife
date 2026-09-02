@@ -362,7 +362,12 @@ from IAM Access Advisor (`GenerateServiceLastAccessedDetails`) as
 `metadata.service_access`. The call is best-effort: it needs the
 `iam:GenerateServiceLastAccessedDetails` permission and is unavailable in some
 setups (and in the demo's mock), in which case the role is collected without
-drift data.
+drift data. When the CloudTrail collector (`afterlife scan cloudtrail`) has also
+run, each granted service's last-use is refined with `metadata.observed_services`
+(audit-log ground truth): a service counts as used if either source saw it
+within the window, whichever is more recent. This suppresses false positives
+where Access Advisor's last-accessed lags behind real activity. Findings carry
+`evidence.cloudtrail_refined` to show when audit-log data was folded in.
 
 **False positives:** Roles with legitimately broad but rarely-exercised
 permissions (break-glass, disaster recovery) will fire. Suppress them via the
