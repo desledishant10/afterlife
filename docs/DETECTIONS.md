@@ -339,22 +339,31 @@ Mitigation: rule fires at low severity, treated as informational.
 
 ---
 
-## Planned
+## PRIVILEGE-DRIFT
 
-These rules are documented placeholders for work that requires data we don't
-yet collect. They sit in the doc to signal intent and to make the gap
-visible.
+**Severity:** Medium &middot; **Status:** Implemented
 
-### PRIVILEGE-DRIFT
+An active IAM role is granted access to many AWS services its policies allow
+but that it has not used within `privilege_drift_days` (default 90). The rule
+fires when a role has an observed usage profile (at least one used service) yet
+at least `privilege_drift_min_unused` granted-but-unused services.
 
-**Severity:** Medium &middot; **Status:** Planned (needs CloudTrail data)
+**Why it matters:** The unused-but-granted services are ghost access: dead
+weight for the workload, live blast radius for an attacker who compromises the
+role. A role that touches three services but is granted three hundred is three
+hundred services of attack surface for the price of three.
 
-IAM role's attached policies grant permissions far broader than its observed
-N-day usage profile. Surfaces the difference as a finding.
+**Remediation:** Right-size the role's policies to the services it actually
+uses (IAM Access Analyzer can generate a least-privilege policy from this same
+access history), and remove or scope down the unused grants.
 
-Over-privileged roles are "ghost access" for the unused subset of
-permissions. The role works; the extra permissions sit there waiting to be
-abused if the role's credentials are compromised.
+**Data source:** The AWS collector attaches per-service last-use to each role
+from IAM Access Advisor (`GenerateServiceLastAccessedDetails`) as
+`metadata.service_access`. The call is best-effort: it needs the
+`iam:GenerateServiceLastAccessedDetails` permission and is unavailable in some
+setups (and in the demo's mock), in which case the role is collected without
+drift data.
 
-Requires: CloudTrail collection, IAM Access Analyzer integration, or a
-similar usage-data source.
+**False positives:** Roles with legitimately broad but rarely-exercised
+permissions (break-glass, disaster recovery) will fire. Suppress them via the
+allowlist with a documented reason.

@@ -18,6 +18,10 @@ or two commits and one or two of the milestones below.
   The GitHub collector now ingests PATs as `github_pat` credentials from the
   Enterprise SAML SSO credential-authorizations endpoint (best-effort; a
   non-Enterprise org simply yields none)
+- New rule **PRIVILEGE-DRIFT** (Medium): an active IAM role granted access to
+  far more AWS services than it uses. The AWS collector attaches per-service
+  last-use from IAM Access Advisor to each role (best-effort). This was the
+  last rule in the Planned section, which is now empty
 
 ### Pro features
 
