@@ -12,6 +12,7 @@ import os
 from dataclasses import dataclass
 
 from afterlife.db import ReconcileSummary
+from afterlife.licensing import FEATURE_INTEGRATIONS, has_feature
 from afterlife.models import Finding, Severity, finding_fingerprint
 from afterlife.notify.base import (
     SEVERITY_RANK,
@@ -20,6 +21,7 @@ from afterlife.notify.base import (
     meets_threshold,
 )
 from afterlife.notify.email import EmailNotifier, SMTPSettings
+from afterlife.notify.jira import JiraNotifier, JiraSettings
 from afterlife.notify.slack import SlackNotifier
 from afterlife.notify.webhook import WebhookNotifier
 
@@ -31,6 +33,8 @@ __all__ = [
     "SlackNotifier",
     "WebhookNotifier",
     "EmailNotifier",
+    "JiraNotifier",
+    "JiraSettings",
     "SEVERITY_RANK",
     "meets_threshold",
     "select_alertable",
@@ -52,6 +56,7 @@ class NotifyConfig:
     slack_webhook: str | None = None
     webhook_url: str | None = None
     smtp: SMTPSettings | None = None
+    jira: JiraSettings | None = None
     min_severity: Severity = Severity.HIGH
 
     @classmethod
@@ -72,14 +77,30 @@ class NotifyConfig:
                 sender=env.get("AFTERLIFE_EMAIL_FROM", "afterlife@localhost"),
                 recipients=recipients,
             )
+        jira = None
+        if all(
+            env.get(k)
+            for k in (
+                "AFTERLIFE_JIRA_URL", "AFTERLIFE_JIRA_EMAIL",
+                "AFTERLIFE_JIRA_TOKEN", "AFTERLIFE_JIRA_PROJECT",
+            )
+        ):
+            jira = JiraSettings(
+                base_url=env["AFTERLIFE_JIRA_URL"],
+                email=env["AFTERLIFE_JIRA_EMAIL"],
+                api_token=env["AFTERLIFE_JIRA_TOKEN"],
+                project_key=env["AFTERLIFE_JIRA_PROJECT"],
+                issue_type=env.get("AFTERLIFE_JIRA_ISSUE_TYPE", "Task"),
+            )
         return cls(
             slack_webhook=env.get("AFTERLIFE_SLACK_WEBHOOK") or None,
             webhook_url=env.get("AFTERLIFE_WEBHOOK_URL") or None,
             smtp=smtp,
+            jira=jira,
             min_severity=_parse_severity(env.get("AFTERLIFE_NOTIFY_MIN_SEVERITY")),
         )
 
-    def build_notifiers(self) -> list[Notifier]:
+    def build_notifiers(self, env: dict[str, str] | None = None) -> list[Notifier]:
         notifiers: list[Notifier] = []
         if self.slack_webhook:
             notifiers.append(SlackNotifier(self.slack_webhook))
@@ -87,10 +108,20 @@ class NotifyConfig:
             notifiers.append(WebhookNotifier(self.webhook_url))
         if self.smtp:
             notifiers.append(EmailNotifier(self.smtp))
+        # Ticketing integrations are a Pro feature.
+        if self.jira and has_feature(FEATURE_INTEGRATIONS, env):
+            notifiers.append(JiraNotifier(self.jira))
         return notifiers
 
+    def unlicensed_pro_channels(self, env: dict[str, str] | None = None) -> list[str]:
+        """Configured channels that are gated behind a Pro license the user lacks."""
+        out: list[str] = []
+        if self.jira and not has_feature(FEATURE_INTEGRATIONS, env):
+            out.append("jira")
+        return out
+
     def has_channels(self) -> bool:
-        return bool(self.slack_webhook or self.webhook_url or self.smtp)
+        return bool(self.slack_webhook or self.webhook_url or self.smtp or self.jira)
 
 
 def select_alertable(
@@ -145,4 +176,8 @@ def notify_findings(
         except Exception as exc:
             # Report the failure but never abort the other channels.
             results[notifier.name] = f"error: {exc}"
+    # Surface channels the user configured but is not licensed for, so a
+    # configured-but-silent Pro channel is never mistaken for a delivery.
+    for channel in config.unlicensed_pro_channels():
+        results[channel] = "skipped: requires a Pro license (run `afterlife license`)"
     return results
