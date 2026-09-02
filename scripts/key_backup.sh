@@ -37,17 +37,19 @@ pick_tool() {
 ext_for() { case "$1" in age) echo age ;; gpg) echo gpg ;; openssl) echo enc ;; esac; }
 
 encrypt() { # encrypt <tool> <in> <out>
+  rm -f "$3"  # age/gpg refuse to overwrite; the caller has cleared the guard
   case "$1" in
     age)     age -p -o "$3" "$2" ;;
-    gpg)     gpg --symmetric --cipher-algo AES256 --output "$3" "$2" ;;
+    gpg)     gpg --yes --symmetric --cipher-algo AES256 --output "$3" "$2" ;;
     openssl) openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in "$2" -out "$3" ;;
   esac
 }
 
 decrypt() { # decrypt <tool> <in> <out>
+  rm -f "$3"  # age/gpg refuse to overwrite an existing output file
   case "$1" in
     age)     age -d -o "$3" "$2" ;;
-    gpg)     gpg --decrypt --output "$3" "$2" ;;
+    gpg)     gpg --yes --decrypt --output "$3" "$2" ;;
     openssl) openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in "$2" -out "$3" ;;
   esac
 }
@@ -87,10 +89,10 @@ cmd_backup() {
   # An untested backup is not a backup: decrypt it and compare byte-for-byte.
   local tmp
   tmp="$(mktemp "$(dirname "$KEY")/.roundtrip.XXXXXX")"
-  chmod 600 "$tmp"
   trap 'rm -f "$tmp"' EXIT
   echo "Verifying the backup decrypts and matches the original..."
-  decrypt "$tool" "$out" "$tmp"
+  decrypt "$tool" "$out" "$tmp"   # clears $tmp first, then writes the plaintext
+  chmod 600 "$tmp" 2>/dev/null || true
   cmp -s "$KEY" "$tmp" || die "round-trip FAILED; do not trust $out"
 
   echo
