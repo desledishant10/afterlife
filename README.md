@@ -335,6 +335,7 @@ docs/              ARCHITECTURE.md, DETECTIONS.md, INTERVIEW_TALK_TRACK.md
 - [docs/DETECTIONS.md](docs/DETECTIONS.md): every rule, false-positive notes, remediation
 - [docs/blog/the-graph-layer.md](docs/blog/the-graph-layer.md): design essay on why a graph is the right shape for cross-source ghost-access detection
 - [docs/INTERVIEW_TALK_TRACK.md](docs/INTERVIEW_TALK_TRACK.md): prepared narratives for portfolio conversations
+- [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md): backing up and rotating the license-signing key (maintainers)
 - [CHANGELOG.md](CHANGELOG.md): full release + milestone history
 
 ## Why "Afterlife"

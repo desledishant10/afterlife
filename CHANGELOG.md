@@ -5,6 +5,14 @@ or two commits and one or two of the milestones below.
 
 ## Unreleased
 
+### Operations
+
+- `scripts/key_backup.sh` and `docs/KEY-MANAGEMENT.md`: back up, restore, and
+  verify the irreplaceable license-signing private key. The backup encrypts with
+  an operator-chosen passphrase (age/gpg/openssl) and round-trips it; `verify`
+  confirms the key matches the embedded `VENDOR_PUBLIC_KEY`. Also tightened the
+  key file to mode 600
+
 ## v0.3.0 (September 2026)
 
 Deepens detection and sharpens the low-ops path. Adds a CloudTrail
