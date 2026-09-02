@@ -1,0 +1,33 @@
+name: CodeQL
+
+# Static security analysis of Afterlife's own code. A security tool should hold
+# itself to the bar it enforces, so we scan on every push, pull request, and
+# weekly to catch newly-published query updates.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # upload results to Code Scanning
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
