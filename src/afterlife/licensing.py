@@ -14,6 +14,7 @@ those paths refuse and point the user at `afterlife license`.
 from __future__ import annotations
 
 import os
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -30,6 +31,12 @@ MCowBQYDK2VwAyEAyPMIvayk9XoXhwPtobvJStzvU3Vpk7YupTdE60obQNo=
 
 _ALGORITHM = "EdDSA"
 
+# Baked-in revocation list. To revoke a specific leaked or refunded license
+# without rotating the key (which would break every license), add its `jti`
+# here and cut a release: every updated install then rejects that one token.
+# Deployers can also revoke locally via AFTERLIFE_LICENSE_DENYLIST[_FILE].
+_REVOKED_JTIS: frozenset[str] = frozenset()
+
 # Pro feature registry: id -> human description (shown by `afterlife license`).
 FEATURE_DASHBOARD_AUTH = "dashboard_auth"
 FEATURE_INTEGRATIONS = "integrations"
@@ -41,10 +48,8 @@ PRO_FEATURES: dict[str, str] = {
 }
 
 # "Get Pro" details shown to free users by `afterlife license` and in the README.
-# Founding entry price. Replace PRO_CONTACT with your real sales address before
-# launch (it is a non-routable placeholder today).
 PRO_PRICE = "from $990/year"
-PRO_CONTACT = "hello@afterlife.example"
+PRO_CONTACT = "didesle7@gmail.com"
 
 
 @dataclass
@@ -54,6 +59,7 @@ class License:
     features: list[str] = field(default_factory=list)
     issued_at: datetime | None = None
     expires_at: datetime | None = None
+    jti: str | None = None
 
     @property
     def is_pro(self) -> bool:
@@ -78,13 +84,21 @@ def issue_license(
     features: list[str] | None = None,
     expires_in_days: int | None = 365,
     now: datetime | None = None,
+    jti: str | None = None,
 ) -> str:
-    """Mint a signed license token. Vendor-side (needs the private key)."""
+    """Mint a signed license token. Vendor-side (needs the private key).
+
+    Every token carries a unique `jti` (JWT ID) so an individual license can be
+    revoked later via the verifier's denylist without touching the key or other
+    licenses. Pass `jti` only for deterministic tests; production mints a fresh
+    random one.
+    """
     now = now or datetime.now(UTC)
     claims: dict = {
         "sub": customer,
         "edition": edition,
         "iat": int(now.timestamp()),
+        "jti": jti or uuid.uuid4().hex,
     }
     if features:
         claims["features"] = list(features)
@@ -94,17 +108,25 @@ def issue_license(
 
 
 def verify_license(
-    token: str, public_key_pem: str | None = None
+    token: str,
+    public_key_pem: str | None = None,
+    *,
+    denylist: set[str] | None = None,
 ) -> License | None:
     """Verify a token's signature and expiry. Returns None if invalid.
 
     Reads VENDOR_PUBLIC_KEY at call time (not as a bound default) so it can be
-    overridden per call and stays correct if the embedded key is rotated.
+    overridden per call and stays correct if the embedded key is rotated. If
+    `denylist` is given, a token whose `jti` is listed is rejected: an offline
+    revocation channel for a leaked or refunded license, no server required.
     """
     key = public_key_pem or VENDOR_PUBLIC_KEY
     try:
         claims = jwt.decode(token, key, algorithms=[_ALGORITHM])
     except jwt.PyJWTError:
+        return None
+    jti = claims.get("jti")
+    if denylist and jti is not None and str(jti) in denylist:
         return None
     return License(
         customer=str(claims.get("sub", "")),
@@ -112,6 +134,7 @@ def verify_license(
         features=list(claims.get("features", [])),
         issued_at=_to_dt(claims.get("iat")),
         expires_at=_to_dt(claims.get("exp")),
+        jti=str(jti) if jti is not None else None,
     )
 
 
@@ -133,9 +156,29 @@ def load_license_token(env: dict[str, str] | None = None) -> str | None:
     return None
 
 
+def _load_denylist(env: dict[str, str]) -> set[str]:
+    """Revoked license jtis, from AFTERLIFE_LICENSE_DENYLIST (comma-separated)
+    and/or AFTERLIFE_LICENSE_DENYLIST_FILE (one jti per line, '#' comments ok).
+    """
+    ids: set[str] = set()
+    raw = env.get("AFTERLIFE_LICENSE_DENYLIST")
+    if raw:
+        ids.update(p.strip() for p in raw.split(",") if p.strip())
+    path = env.get("AFTERLIFE_LICENSE_DENYLIST_FILE")
+    if path and Path(path).exists():
+        for line in Path(path).read_text().splitlines():
+            entry = line.strip()
+            if entry and not entry.startswith("#"):
+                ids.add(entry)
+    return ids
+
+
 def current_license(env: dict[str, str] | None = None) -> License | None:
+    env = env if env is not None else dict(os.environ)
     token = load_license_token(env)
-    return verify_license(token) if token else None
+    if not token:
+        return None
+    return verify_license(token, denylist=set(_REVOKED_JTIS) | _load_denylist(env))
 
 
 def edition(env: dict[str, str] | None = None) -> str:

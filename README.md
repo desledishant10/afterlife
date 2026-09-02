@@ -281,7 +281,7 @@ server, nothing phones home):
 
 **Get Pro** (from **$990/year**, founding rate, first 50 organizations, price
 locked for life): email
-[hello@afterlife.example](mailto:hello@afterlife.example?subject=Afterlife%20Pro%20license)
+[didesle7@gmail.com](mailto:didesle7@gmail.com?subject=Afterlife%20Pro%20license)
 with your organization name and you'll get a signed license key to activate:
 
 ```bash

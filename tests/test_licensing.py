@@ -154,3 +154,70 @@ def test_serve_require_auth_refused_without_license(monkeypatch, tmp_path):
     )
     assert result.exit_code == 1
     assert "Pro" in result.stdout
+
+
+# ---------- jti / revocation ----------
+
+
+def test_minted_token_has_unique_jti():
+    priv, pub = _keypair()
+    a = verify_license(issue_license(priv, "Acme"), pub)
+    b = verify_license(issue_license(priv, "Acme"), pub)
+    assert a is not None and b is not None
+    assert a.jti and b.jti
+    assert a.jti != b.jti  # each mint is individually revocable
+
+
+def test_denylisted_jti_is_rejected():
+    priv, pub = _keypair()
+    token = issue_license(priv, "Acme", jti="revoke-me")
+    assert verify_license(token, pub) is not None  # valid without a denylist
+    assert verify_license(token, pub, denylist={"revoke-me"}) is None
+    # An unrelated jti on the list does not affect this token.
+    assert verify_license(token, pub, denylist={"other"}) is not None
+
+
+def test_current_license_respects_denylist_env(monkeypatch):
+    from afterlife.licensing import current_license
+    priv, pub = _keypair()
+    monkeypatch.setattr("afterlife.licensing.VENDOR_PUBLIC_KEY", pub)
+    monkeypatch.setenv("AFTERLIFE_LICENSE", issue_license(priv, "Acme", jti="abc123"))
+    monkeypatch.delenv("AFTERLIFE_LICENSE_FILE", raising=False)
+    assert current_license() is not None
+    monkeypatch.setenv("AFTERLIFE_LICENSE_DENYLIST", "zzz, abc123 , yyy")
+    assert current_license() is None
+
+
+def test_denylist_from_file(tmp_path, monkeypatch):
+    from afterlife.licensing import current_license
+    priv, pub = _keypair()
+    monkeypatch.setattr("afterlife.licensing.VENDOR_PUBLIC_KEY", pub)
+    monkeypatch.setenv("AFTERLIFE_LICENSE", issue_license(priv, "Acme", jti="file-jti"))
+    monkeypatch.delenv("AFTERLIFE_LICENSE_FILE", raising=False)
+    dl = tmp_path / "revoked.txt"
+    dl.write_text("# revoked licenses\nfile-jti\n")
+    monkeypatch.setenv("AFTERLIFE_LICENSE_DENYLIST_FILE", str(dl))
+    assert current_license() is None
+
+
+def test_token_without_jti_still_verifies():
+    # Backward compatibility: licenses minted before jti existed have no jti and
+    # must still verify (they simply cannot be revoked by jti).
+    import jwt
+    priv, pub = _keypair()
+    token = jwt.encode({"sub": "OldCorp", "edition": "pro"}, priv, algorithm="EdDSA")
+    lic = verify_license(token, pub, denylist={"anything"})
+    assert lic is not None
+    assert lic.jti is None
+    assert lic.is_pro
+
+
+def test_baked_in_revocation_is_enforced(monkeypatch):
+    from afterlife import licensing
+    priv, pub = _keypair()
+    monkeypatch.setattr(licensing, "VENDOR_PUBLIC_KEY", pub)
+    monkeypatch.setattr(licensing, "_REVOKED_JTIS", frozenset({"baked"}))
+    monkeypatch.setenv("AFTERLIFE_LICENSE", issue_license(priv, "Acme", jti="baked"))
+    monkeypatch.delenv("AFTERLIFE_LICENSE_FILE", raising=False)
+    monkeypatch.delenv("AFTERLIFE_LICENSE_DENYLIST", raising=False)
+    assert licensing.current_license() is None

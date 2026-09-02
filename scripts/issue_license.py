@@ -48,10 +48,18 @@ def main(argv: list[str] | None = None) -> int:
         expires_in_days=(None if args.days == 0 else args.days),
     )
     # Sanity check against the embedded public key before handing it out.
-    if verify_license(token) is None:
+    lic = verify_license(token)
+    if lic is None:
         print("error: minted token failed self-verification", file=sys.stderr)
         return 1
 
+    # Record this jti against the customer: it is how you revoke this one license
+    # later (add it to AFTERLIFE_LICENSE_DENYLIST) without affecting any other.
+    validity = "perpetual" if args.days == 0 else f"{args.days}d"
+    print(
+        f"issued jti={lic.jti} customer={args.customer!r} validity={validity}",
+        file=sys.stderr,
+    )
     print(token)
     return 0
 
