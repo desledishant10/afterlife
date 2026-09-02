@@ -117,7 +117,7 @@ choose based on consumer.
 
 ## Web dashboard
 
-`afterlife serve` launches a local FastAPI dashboard with eight pages.
+`afterlife serve` launches a local FastAPI dashboard with nine pages.
 
 <p>
   <img alt="Overview: severity tiles, blast tiers, identity-graph stats" src="docs/media/overview.png" width="320">
@@ -150,6 +150,7 @@ The pages:
 
 - **Overview**: severity tiles, blast-tier chart, last-scan-per-source.
 - **Findings**: filterable, searchable, sortable, expandable evidence + remediation, one-click `ack` per finding (state in localStorage), HTMX-powered live filtering.
+- **Trends**: finding history over time from the lifecycle timestamps: open findings by severity, new-vs-resolved flow, and headline stats (open now, seen ever, resolved, median days to resolve).
 - **Credentials**: sortable table with source / type / active filters, click into per-credential detail.
 - **Identities**: person-grouped, filterable to cross-source only, click into per-person detail showing all linked identities + owned credentials + active findings.
 - **Finding / Credential / Person detail pages**: deep-linked, fully cross-referenced.

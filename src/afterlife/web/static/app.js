@@ -7,6 +7,7 @@
 //   ?        toggle the keyboard help modal
 //   g h      go to overview
 //   g f      go to findings
+//   g t      go to trends
 //   g c      go to credentials
 //   g i      go to identities
 
@@ -186,6 +187,7 @@
       const dest = {
         h: "/",
         f: "/findings",
+        t: "/trends",
         c: "/credentials",
         i: "/identities",
       }[e.key];
