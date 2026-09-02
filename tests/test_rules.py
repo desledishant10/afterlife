@@ -10,6 +10,7 @@ from afterlife.rules.cross_account_trust import cross_account_trust
 from afterlife.rules.inactive_admin import inactive_admin
 from afterlife.rules.never_used import never_used
 from afterlife.rules.offboarded_owner import offboarded_owner
+from afterlife.rules.orphaned_github import orphaned_github
 from afterlife.rules.orphaned_identity import orphaned_identity
 from afterlife.rules.outside_collab_with_aws import outside_collab_with_aws
 from afterlife.rules.stale_deploy_key_write import stale_deploy_key_write
@@ -762,6 +763,7 @@ def test_rule_registry_discovers_all_rules():
         "ADMIN-CONCENTRATION",
         "STALE-DEPLOY-KEY-WRITE",
         "STALE-OAUTH",
+        "ORPHANED-GITHUB",
     }
 
 
@@ -1197,3 +1199,69 @@ def test_is_write_scope():
     assert not is_write_scope("openid")
     assert not is_write_scope("email")
     assert not is_write_scope("https://www.googleapis.com/auth/userinfo.email")
+
+
+# ---------- ORPHANED-GITHUB ----------
+
+
+def _github_pat(login, **kw):
+    base = dict(
+        source="github",
+        credential_id=f"pat:{login}:1",
+        credential_type="github_pat",
+        owner_source="github",
+        owner_id=login,
+        scopes=["repo", "read:org"],
+        metadata={"token_last_eight": "abcd1234"},
+    )
+    base.update(kw)
+    return Credential(**base)
+
+
+def _github_identity(login, is_outside=False):
+    return Identity(
+        source="github",
+        source_id=login,
+        email=None,
+        name=login,
+        status="active",
+        metadata={"is_outside_collaborator": is_outside},
+    )
+
+
+def test_orphaned_github_fires_for_ex_member_token(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(conn, _github_identity("alice"))  # a current member
+        db.upsert_credential(conn, _github_pat("ghost"))  # owner not in the org
+    with db.connect(fresh_db) as conn:
+        findings = orphaned_github(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].rule_id == "ORPHANED-GITHUB"
+    assert findings[0].evidence["owner_login"] == "ghost"
+    assert findings[0].identity_id == "ghost"
+
+
+def test_orphaned_github_quiet_for_current_member(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(conn, _github_identity("alice"))
+        db.upsert_credential(conn, _github_pat("alice"))
+    with db.connect(fresh_db) as conn:
+        findings = orphaned_github(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_orphaned_github_quiet_for_outside_collaborator(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(conn, _github_identity("jane", is_outside=True))
+        db.upsert_credential(conn, _github_pat("jane"))
+    with db.connect(fresh_db) as conn:
+        findings = orphaned_github(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_orphaned_github_quiet_for_inactive_token(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _github_pat("ghost", is_active=False))
+    with db.connect(fresh_db) as conn:
+        findings = orphaned_github(conn, Config(), _graph(conn))
+    assert findings == []

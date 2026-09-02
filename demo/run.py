@@ -781,6 +781,14 @@ def seed_github_routes(router) -> None:
     router.route(
         method="GET", host="api.github.com", path=f"/orgs/{GH_ORG}/repos"
     ).mock(return_value=httpx.Response(200, json=GH_REPOS))
+    # SAML credential authorizations (Enterprise-only): none in the synthetic
+    # org, so the deterministic demo output is unchanged while the collector
+    # path is still exercised.
+    router.route(
+        method="GET",
+        host="api.github.com",
+        path=f"/orgs/{GH_ORG}/credential-authorizations",
+    ).mock(return_value=httpx.Response(200, json=[]))
     for repo in GH_REPOS:
         router.route(
             method="GET",

@@ -40,6 +40,7 @@ def _default_routes(
     outside: list[dict] | None = None,
     installations: list[dict] | None = None,
     repos: list[dict] | None = None,
+    cred_auths: list[dict] | None = None,
 ):
     _route("/orgs/test-org/members").mock(
         return_value=httpx.Response(200, json=members or [])
@@ -58,6 +59,9 @@ def _default_routes(
     )
     _route("/orgs/test-org/repos").mock(
         return_value=httpx.Response(200, json=repos or [])
+    )
+    _route("/orgs/test-org/credential-authorizations").mock(
+        return_value=httpx.Response(200, json=cred_auths or [])
     )
 
 
@@ -206,6 +210,9 @@ def test_paginates_via_link_header(fresh_db):
     _route("/orgs/test-org/repos").mock(
         return_value=httpx.Response(200, json=[])
     )
+    _route("/orgs/test-org/credential-authorizations").mock(
+        return_value=httpx.Response(200, json=[])
+    )
 
     count = _run(fresh_db)
 
@@ -227,6 +234,9 @@ def test_installations_403_is_non_fatal(fresh_db):
         return_value=httpx.Response(403, json={"message": "Forbidden"})
     )
     _route("/orgs/test-org/repos").mock(return_value=httpx.Response(200, json=[]))
+    _route("/orgs/test-org/credential-authorizations").mock(
+        return_value=httpx.Response(200, json=[])
+    )
 
     count = _run(fresh_db)
     assert count == 0
@@ -282,3 +292,65 @@ def test_unauthorized_raises(fresh_db):
 
     with pytest.raises(httpx.HTTPStatusError):
         _run(fresh_db)
+
+
+@respx.mock
+def test_collects_personal_access_tokens(fresh_db):
+    _default_routes(
+        members=[_user("alice")],
+        cred_auths=[
+            {
+                "login": "alice",
+                "credential_id": 111,
+                "credential_type": "personal access token",
+                "credential_authorized_at": "2024-01-02T10:00:00Z",
+                "credential_accessed_at": "2026-05-01T10:00:00Z",
+                "scopes": ["repo", "read:org"],
+                "token_last_eight": "abcd1234",
+            },
+            {  # an SSH key authorization is not a PAT and must be skipped
+                "login": "alice",
+                "credential_id": 222,
+                "credential_type": "SSH key",
+            },
+        ],
+    )
+
+    _run(fresh_db)
+
+    with db.connect(fresh_db) as conn:
+        rows = conn.execute(
+            "SELECT credential_id, owner_source, owner_id, scopes, metadata "
+            "FROM credentials WHERE credential_type = 'github_pat'"
+        ).fetchall()
+    assert len(rows) == 1  # the SSH key was skipped
+    assert rows[0]["credential_id"] == "pat:alice:111"
+    assert rows[0]["owner_source"] == "github"
+    assert rows[0]["owner_id"] == "alice"
+    assert json.loads(rows[0]["metadata"])["token_last_eight"] == "abcd1234"
+
+
+@respx.mock
+def test_credential_authorizations_absent_is_tolerated(fresh_db):
+    # Non-Enterprise orgs 404 this endpoint; the scan must still succeed.
+    _route("/orgs/test-org/members").mock(
+        return_value=httpx.Response(200, json=[_user("alice")])
+    )
+    _route("/orgs/test-org/outside_collaborators").mock(
+        return_value=httpx.Response(200, json=[])
+    )
+    _route("/orgs/test-org/installations").mock(
+        return_value=httpx.Response(200, json={"total_count": 0, "installations": []})
+    )
+    _route("/orgs/test-org/repos").mock(return_value=httpx.Response(200, json=[]))
+    _route("/orgs/test-org/credential-authorizations").mock(
+        return_value=httpx.Response(404, json={"message": "Not Found"})
+    )
+
+    _run(fresh_db)
+
+    with db.connect(fresh_db) as conn:
+        n = conn.execute(
+            "SELECT COUNT(*) AS n FROM credentials WHERE credential_type='github_pat'"
+        ).fetchone()["n"]
+    assert n == 0

@@ -217,6 +217,31 @@ credentials. Audit how the contractor was originally given AWS access.
 
 ---
 
+## ORPHANED-GITHUB
+
+**Severity:** High &middot; **Status:** Implemented
+
+An active GitHub personal access token is owned by a login that is no longer a
+member or outside collaborator of the organization. GitHub does not revoke a
+member's tokens when they are removed, so the token keeps working against any
+repository the former user can still reach.
+
+**Why it matters:** A departed employee's PAT is standing, unmonitored access.
+It survives offboarding, and the ex-user can regain reach to org repos as an
+outside collaborator elsewhere, at which point the old token works again.
+
+**Remediation:** Revoke the token in the org's SAML SSO credential
+authorizations (Settings -> Authentication security) and confirm the user's
+org membership was fully removed.
+
+**Data source:** PATs are ingested by the GitHub collector from the Enterprise
+SAML SSO `/orgs/{org}/credential-authorizations` endpoint as `github_pat`
+credentials. The call is best-effort: a non-Enterprise org (404) or a missing
+`admin:org` scope (403) simply yields no PATs. Deploy keys are out of scope
+here; they are covered by UNUSED-CREDENTIAL and STALE-DEPLOY-KEY-WRITE.
+
+---
+
 ## INACTIVE-ADMIN
 
 **Severity:** High &middot; **Status:** Implemented
@@ -333,18 +358,3 @@ abused if the role's credentials are compromised.
 
 Requires: CloudTrail collection, IAM Access Analyzer integration, or a
 similar usage-data source.
-
-### ORPHANED-GITHUB
-
-**Severity:** High &middot; **Status:** Planned (needs PAT inventory)
-
-GitHub PAT or deploy key whose owning user is no longer a member of the org.
-
-GitHub does not automatically invalidate PATs when a user is removed from an
-org. The token continues to work against any private repo the user still has
-access to elsewhere, including org repos the ex-user re-gains access to via
-outside-collaborator invites.
-
-Requires: Enterprise SAML SSO credential-authorizations endpoint, or another
-PAT-inventory source. Deploy keys are already covered by UNUSED-CREDENTIAL +
-STALE-DEPLOY-KEY-WRITE.
