@@ -66,6 +66,33 @@ def scan_aws(
     console.print(f"[green]OK[/green] collected {n} AWS records")
 
 
+@scan_app.command("cloudtrail")
+def scan_cloudtrail(
+    profile: str | None = typer.Option(
+        None, envvar="AWS_PROFILE",
+        help="AWS profile name (default: boto3 credential chain).",
+    ),
+    region: str | None = typer.Option(
+        None, envvar="AWS_REGION", help="AWS region.",
+    ),
+    lookback_days: int = typer.Option(
+        90, "--lookback-days", help="How far back to read CloudTrail events."
+    ),
+    db_path: Path = DEFAULT_DB,
+) -> None:
+    """Enrich AWS credentials with observed usage from CloudTrail (run after `scan aws`)."""
+    from afterlife.collectors.cloudtrail import CloudTrailCollector
+    from afterlife.scan_runs import record_run
+
+    with record_run(db_path, "cloudtrail") as run:
+        n = CloudTrailCollector(
+            db_path=db_path, profile=profile, region=region,
+            lookback_days=lookback_days,
+        ).run()
+        run["records_collected"] = n
+    console.print(f"[green]OK[/green] enriched {n} AWS credentials from CloudTrail")
+
+
 @scan_app.command("github")
 def scan_github(
     token: str = typer.Option(..., envvar="GITHUB_TOKEN"),

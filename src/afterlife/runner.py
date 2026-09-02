@@ -24,6 +24,7 @@ import yaml
 from afterlife import db
 from afterlife.collectors.aws import AWSCollector
 from afterlife.collectors.base import Collector
+from afterlife.collectors.cloudtrail import CloudTrailCollector
 from afterlife.collectors.gcp_iam import GCPIAMCollector
 from afterlife.collectors.github import GitHubCollector
 from afterlife.collectors.gitlab import GitLabCollector
@@ -57,6 +58,15 @@ def _require(env: Env, source: str, *keys: str) -> None:
 def _build_aws(db_path: Path, env: Env) -> Collector:
     # AWS always builds: with nothing set, boto3's default chain resolves.
     return AWSCollector(
+        db_path=db_path,
+        profile=env.get("AWS_PROFILE") or None,
+        region=env.get("AWS_REGION") or None,
+    )
+
+
+def _build_cloudtrail(db_path: Path, env: Env) -> Collector:
+    # Enrichment over AWS credentials; builds like aws (default chain).
+    return CloudTrailCollector(
         db_path=db_path,
         profile=env.get("AWS_PROFILE") or None,
         region=env.get("AWS_REGION") or None,
@@ -133,6 +143,7 @@ def _build_idp(db_path: Path, env: Env) -> Collector:
 
 SOURCE_BUILDERS: dict[str, Builder] = {
     "aws": _build_aws,
+    "cloudtrail": _build_cloudtrail,
     "github": _build_github,
     "gitlab": _build_gitlab,
     "slack": _build_slack,
@@ -141,12 +152,18 @@ SOURCE_BUILDERS: dict[str, Builder] = {
     "idp": _build_idp,
 }
 
+# Enrichment sources are opt-in (they add no identities and lean on another
+# source running first), so auto-detection does not include them.
+_AUTODETECT_SKIP = frozenset({"cloudtrail"})
+
 
 def detect_sources(env: Env, builders: dict[str, Builder] | None = None) -> list[str]:
     """Sources whose required env vars are present (buildable right now)."""
     builders = builders or SOURCE_BUILDERS
     found = []
     for name, build in builders.items():
+        if name in _AUTODETECT_SKIP:
+            continue
         try:
             build(Path("unused.db"), env)
         except SourceNotConfigured:
