@@ -129,6 +129,30 @@ The blast radius, stated plainly: **rotation breaks every license already sold
 until each customer both upgrades and receives a re-minted key.** That is why
 the backup exists: so you never have to rotate over a lost key.
 
+## Revoking a single license
+
+Rotation is the nuclear option. To kill **one** leaked or refunded license
+without touching any other, use its `jti` (JWT ID). Every minted token carries a
+unique one, and `scripts/issue_license.py` prints it to stderr at mint time:
+
+```
+issued jti=75f0af7ed30a482ebaa698aa179625a8 customer='Acme Corp' validity=365d
+```
+
+Record that jti against the customer. To revoke:
+
+- **Ship it (the durable way).** Add the jti to `_REVOKED_JTIS` in
+  [`src/afterlife/licensing.py`](../src/afterlife/licensing.py) and cut a
+  release. Every updated install then rejects that one token and nothing else.
+- **Locally (deployer-side).** A self-hosted operator can revoke on their own
+  box by listing jtis in `AFTERLIFE_LICENSE_DENYLIST` (comma-separated) or
+  `AFTERLIFE_LICENSE_DENYLIST_FILE` (one jti per line).
+
+The honest limitation: nothing phones home, so a revocation only takes effect
+where the updated build or denylist is present. It is a "revoke in the next
+release" kill switch, not instant remote revocation. But unlike rotation, it
+leaves every other customer's license working.
+
 ## Incident response
 
 **Key lost (no backup).** You cannot recover it. Rotate (above), which forces a
@@ -142,9 +166,9 @@ stolen laptop, exposed in a log):
 3. If the key ever touched git history, purging the working copy is not enough;
    the object remains in history and must be considered public. Rotate
    regardless of any history rewrite.
-4. Note that offline licenses have no revocation channel today (there is no
-   `jti` denylist), so rotation via release is the only kill switch. Adding a
-   `jti` claim now is cheap insurance for the future.
+4. If only one license leaked (not the signing key itself), prefer
+   [revoking that single license](#revoking-a-single-license) by its `jti` over
+   a full rotation. Rotate only when the private key is what leaked.
 
 ## Do not
 

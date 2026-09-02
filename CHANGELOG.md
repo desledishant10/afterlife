@@ -10,8 +10,14 @@ or two commits and one or two of the milestones below.
 - Free users now see a "Get Pro" call-to-action with the founding price
   (from $990/year) and a contact address, in both the README Editions section
   and the `afterlife license` output. Price/contact live as `PRO_PRICE` /
-  `PRO_CONTACT` in `licensing.py`; the contact is a non-routable placeholder to
-  replace before launch
+  `PRO_CONTACT` in `licensing.py`
+- Licenses are now individually revocable. Every minted token carries a unique
+  `jti` (printed by `issue_license.py`), and the verifier rejects any jti in a
+  baked-in `_REVOKED_JTIS` set (revoke via release) or in the deployer-side
+  `AFTERLIFE_LICENSE_DENYLIST` / `_FILE`. This is an offline kill switch for a
+  leaked or refunded license that, unlike key rotation, leaves every other
+  license working. Tokens minted before `jti` still verify. See
+  [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md#revoking-a-single-license)
 
 ### Operations
 
