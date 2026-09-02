@@ -4,15 +4,16 @@ name: Deploy landing page
 # site/ folder keeps the internal docs (GO-TO-MARKET.md, KEY-MANAGEMENT.md) off
 # the public marketing URL.
 #
-# One-time setup: repo Settings -> Pages -> Build and deployment -> Source =
-# "GitHub Actions". After that, every push that touches site/ redeploys.
+# One-time setup by the repo owner (the workflow token cannot create a Pages
+# site itself): repo Settings -> Pages -> Build and deployment -> Source =
+# "GitHub Actions". After that, every push that touches site/ redeploys, and you
+# can also deploy on demand from the Actions tab (Run workflow).
 
 on:
   push:
     branches: [main]
     paths:
       - "site/**"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -33,10 +34,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-        with:
-          # Enable Pages (Actions source) on first run, so no manual setup and no
-          # red run before the repo owner flips a setting.
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./site
