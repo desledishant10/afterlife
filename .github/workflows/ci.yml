@@ -47,5 +47,5 @@ jobs:
       - name: Type check (mypy)
         run: mypy src
 
-      - name: Test (pytest)
-        run: pytest -q
+      - name: Test (pytest, with coverage gate)
+        run: pytest -q --cov=afterlife --cov-report=term-missing --cov-fail-under=82

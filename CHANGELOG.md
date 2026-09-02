@@ -3,9 +3,10 @@
 Notable changes to Afterlife, newest first. Each entry maps roughly to one
 or two commits and one or two of the milestones below.
 
-## Unreleased
+## v0.2.0 (September 2026)
 
-Post-v0.1 work toward a continuously-monitoring, installable product.
+Turns the v0.1 auditor into a continuously-monitoring, installable, self-hostable
+product with an open-core commercial tier.
 
 ### Project foundation
 
