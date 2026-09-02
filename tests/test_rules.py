@@ -14,10 +14,12 @@ from afterlife.rules.orphaned_github import orphaned_github
 from afterlife.rules.orphaned_identity import orphaned_identity
 from afterlife.rules.outside_collab_with_aws import outside_collab_with_aws
 from afterlife.rules.privilege_drift import privilege_drift
+from afterlife.rules.public_role_trust import public_role_trust
 from afterlife.rules.stale_deploy_key_write import stale_deploy_key_write
 from afterlife.rules.stale_oauth import is_write_scope, stale_oauth
 from afterlife.rules.unrotated_key import unrotated_key
 from afterlife.rules.unused_credential import unused_credential
+from afterlife.rules.user_without_mfa import user_without_mfa
 from tests.conftest import make_credential, make_identity
 
 
@@ -1421,3 +1423,142 @@ def test_privilege_drift_cloudtrail_promotes_never_authenticated_service(fresh_d
         findings = privilege_drift(conn, _drift_config(), _graph(conn))
     assert findings[0].evidence["used_services"] == 2  # s3 + svc0 via CloudTrail
     assert findings[0].evidence["unused_services"] == 5
+
+
+# ---------- USER-WITHOUT-MFA ----------
+
+
+def _google_user(source_id, **md):
+    return Identity(
+        source="google",
+        source_id=source_id,
+        email=f"{source_id}@example.com",
+        name=source_id,
+        status=md.pop("status", "active"),
+        metadata=md,
+    )
+
+
+def test_user_without_mfa_fires_for_active_non_admin(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(conn, _google_user("g1", is_admin=False, is_enforced_in_2sv=False))
+    with db.connect(fresh_db) as conn:
+        findings = user_without_mfa(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].rule_id == "USER-WITHOUT-MFA"
+    assert findings[0].evidence["source_id"] == "g1"
+
+
+def test_user_without_mfa_quiet_for_admin(fresh_db):
+    # Admins are covered by the Critical ADMIN-WITHOUT-MFA rule instead.
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(conn, _google_user("g-admin", is_admin=True, is_enforced_in_2sv=False))
+    with db.connect(fresh_db) as conn:
+        findings = user_without_mfa(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_user_without_mfa_quiet_when_enforced(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(conn, _google_user("g2", is_admin=False, is_enforced_in_2sv=True))
+    with db.connect(fresh_db) as conn:
+        findings = user_without_mfa(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_user_without_mfa_quiet_when_unknown_but_enrolled(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            _google_user("g3", is_admin=False, is_enforced_in_2sv=None, is_enrolled_in_2sv=True),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = user_without_mfa(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_user_without_mfa_quiet_for_suspended_user(fresh_db):
+    # Offboarded accounts are OFFBOARDED-OWNER's job, not an MFA gap.
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(
+            conn,
+            _google_user("g4", status="suspended", is_admin=False, is_enforced_in_2sv=False),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = user_without_mfa(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_user_without_mfa_quiet_for_source_without_signal(fresh_db):
+    # Okta does not surface 2SV state in our collector, so it must stay quiet.
+    with db.connect(fresh_db) as conn:
+        db.upsert_identity(conn, make_identity(source="okta", source_id="o1", status="active"))
+    with db.connect(fresh_db) as conn:
+        findings = user_without_mfa(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+# ---------- PUBLIC-ROLE-TRUST ----------
+
+
+def _trust(principal, action="sts:AssumeRole", condition=None):
+    stmt = {"Effect": "Allow", "Principal": principal, "Action": action}
+    if condition is not None:
+        stmt["Condition"] = condition
+    return {"Version": "2012-10-17", "Statement": [stmt]}
+
+
+def test_public_role_trust_fires_for_anonymous_wildcard(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("OpenRole", _trust("*")))
+    with db.connect(fresh_db) as conn:
+        findings = public_role_trust(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].rule_id == "PUBLIC-ROLE-TRUST"
+    assert findings[0].severity.value == "critical"
+
+
+def test_public_role_trust_fires_for_aws_wildcard(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("AnyAcct", _trust({"AWS": "*"})))
+    with db.connect(fresh_db) as conn:
+        findings = public_role_trust(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+
+
+def test_public_role_trust_fires_for_wildcard_account_arn(fresh_db):
+    trust = _trust({"AWS": "arn:aws:iam::*:root"})
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("WildArn", trust))
+    with db.connect(fresh_db) as conn:
+        findings = public_role_trust(conn, Config(), _graph(conn))
+    assert len(findings) == 1
+
+
+def test_public_role_trust_quiet_when_constrained_by_org_id(fresh_db):
+    # Principal:* gated by an org-id condition is the common safe pattern.
+    trust = _trust({"AWS": "*"}, condition={"StringEquals": {"aws:PrincipalOrgID": "o-abc123"}})
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("OrgScoped", trust))
+    with db.connect(fresh_db) as conn:
+        findings = public_role_trust(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_public_role_trust_quiet_for_specific_account(fresh_db):
+    # A named external account is CROSS-ACCOUNT-TRUST's job, not a wildcard.
+    trust = _trust({"AWS": "arn:aws:iam::999999999999:root"})
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("Named", trust))
+    with db.connect(fresh_db) as conn:
+        findings = public_role_trust(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_public_role_trust_quiet_for_service_principal(fresh_db):
+    trust = _trust({"Service": "ec2.amazonaws.com"})
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _role_credential("Ec2", trust))
+    with db.connect(fresh_db) as conn:
+        findings = public_role_trust(conn, Config(), _graph(conn))
+    assert findings == []

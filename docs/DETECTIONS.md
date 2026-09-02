@@ -76,6 +76,36 @@ your own account.
 
 ---
 
+## PUBLIC-ROLE-TRUST
+
+**Severity:** Critical &middot; **Status:** Implemented
+
+An IAM role's trust policy grants `sts:AssumeRole` to a wildcard principal:
+`Principal: "*"`, `Principal.AWS: "*"`, or an ARN whose account field is a
+wildcard (`arn:aws:iam::*:root`). This is strictly worse than
+CROSS-ACCOUNT-TRUST, which names a specific foreign account: here there is no
+counterparty to vet at all. The rule fires only when the wildcard is
+**unconstrained**, so it stays quiet when a `Condition` meaningfully restricts
+who may assume (any of `aws:PrincipalOrgID`, `aws:PrincipalOrgPaths`,
+`aws:PrincipalArn`, `aws:PrincipalAccount`, `aws:SourceAccount`,
+`aws:SourceOwner`, or `sts:ExternalId`).
+
+**Why it matters:** An unconstrained wildcard trust lets any AWS account (or,
+in the anonymous `*` form, anyone) assume the role and inherit its permissions.
+It is a direct, un-vetted path into the account and one of the highest-signal
+IAM misconfigurations. CROSS-ACCOUNT-TRUST deliberately skips these wildcard
+forms, so without this rule they were silently passed.
+
+**False positives:** Roles intentionally open org-wide usually carry an
+`aws:PrincipalOrgID` condition, which suppresses the finding. A genuinely
+public role with no condition is almost always a mistake worth reviewing.
+
+**Remediation:** Replace the wildcard `Principal` with your own account id or
+specific principal ARNs. If cross-account access is required, name the accounts
+and add a `Condition` (`aws:PrincipalOrgID` or `sts:ExternalId`).
+
+---
+
 ## ADMIN-CONCENTRATION
 
 **Severity:** Critical &middot; **Status:** Implemented
@@ -120,6 +150,32 @@ provision. 2FA is the minimum bar; enforced, org-level 2FA is the right one.
 **Coverage gaps:** Okta and Azure MFA signals are policy/conditional-access
 shaped, not on the user object; capturing them requires additional collector
 calls not yet implemented.
+
+---
+
+## USER-WITHOUT-MFA
+
+**Severity:** Medium &middot; **Status:** Implemented for Google Workspace
+
+The non-admin counterpart to ADMIN-WITHOUT-MFA: an **active, non-admin** IdP
+identity we can confirm has no 2-step verification. It uses the same
+conservative signal (fires only when Google `isEnforcedIn2Sv` is explicitly
+false, or enforcement is unknown and `isEnrolledIn2Sv` is false), skips admins
+(reported at Critical by ADMIN-WITHOUT-MFA), and skips suspended accounts
+(OFFBOARDED-OWNER's job).
+
+**Why it matters:** The Snowflake 2024 campaign did not target admins; it
+replayed stolen passwords against ordinary user accounts that had no second
+factor, then exfiltrated data at scale. The population of password-only
+non-admin accounts is exactly that attack surface.
+
+**Coverage gaps:** Same as ADMIN-WITHOUT-MFA: only Google Workspace surfaces
+the enforcement/enrollment signal on the user object today, so Okta and Entra
+identities stay quiet rather than noisy.
+
+**Remediation:** Enforce 2-step verification at the org-unit or group level so
+existing and new users are covered, rather than relying on voluntary
+enrollment.
 
 ---
 

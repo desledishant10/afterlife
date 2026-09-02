@@ -25,7 +25,7 @@ miss it.
 
 ## Status
 
-`v0.2`. 9 source systems collected, 14 detection rules, 350+ tests.
+`v0.2`. 9 source systems collected, 16 detection rules, 380+ tests.
 
 ## Source systems
 
@@ -52,6 +52,7 @@ graph edges directly, even without shared email.
 |------|----------|-----------------|
 | `OFFBOARDED-OWNER` | Critical | Active credential whose owner (or any cross-source linked identity) is suspended/archived/deleted in an IdP. The Uber-2022 pattern. |
 | `CROSS-ACCOUNT-TRUST` | Critical | IAM role trusts an external AWS account. The Capital-One-2019 precondition. |
+| `PUBLIC-ROLE-TRUST` | Critical | IAM role assumable by any AWS principal (wildcard `Principal`) with no restricting condition. |
 | `ADMIN-CONCENTRATION` | Critical | Same person holds admin-tier access in 2+ systems (IdP admin flag + AWS AdministratorAccess + ...). |
 | `ADMIN-WITHOUT-MFA` | Critical | IdP admin (Google Workspace today) without 2-step verification enforced. |
 | `UNUSED-CREDENTIAL` | High | Active credential not used in N days (default 90). |
@@ -61,7 +62,8 @@ graph edges directly, even without shared email.
 | `ORPHANED-GITHUB` | High | Active GitHub PAT whose owner is no longer in the org (Enterprise SAML). |
 | `INACTIVE-ADMIN` | High | Admin who hasn't logged in within the inactivity window. |
 | `UNROTATED-KEY` | Medium | Long-lived static cloud key (AWS / GCP) past the rotation threshold. |
-| `PRIVILEGE-DRIFT` | Medium | IAM role granted far more AWS services than it uses (Access Advisor). |
+| `PRIVILEGE-DRIFT` | Medium | IAM role granted far more AWS services than it uses (Access Advisor, refined by CloudTrail). |
+| `USER-WITHOUT-MFA` | Medium | Active non-admin user (Google Workspace today) with no 2-step verification. The Snowflake-2024 pattern. |
 | `NEVER-USED` | Medium | Active credential past the grace period with no usage record. |
 | `ORPHANED-IDENTITY` | Low | IdP identity with no downstream system presence (hygiene signal). |
 
@@ -306,7 +308,7 @@ text). The dashboard wraps the same readers behind FastAPI. Details in
 ```
 src/afterlife/
 ├── collectors/    9 source collectors + a CloudTrail usage-enrichment pass
-├── rules/         14 detection rules, one file each, decorator-registered
+├── rules/         16 detection rules, one file each, decorator-registered
 ├── graph/         Identity graph (NetworkX), email + Vault-alias linking
 ├── scoring/       Blast-radius scoring with explainable factors
 ├── reporting/     JSON, HTML, SARIF, PDF
@@ -320,7 +322,7 @@ src/afterlife/
 ├── models.py      Identity, Credential, Finding, BlastRadius
 └── cli.py         Typer CLI
 
-tests/             250+ tests using moto, respx, freezegun, fastapi.testclient
+tests/             380+ tests using moto, respx, freezegun, fastapi.testclient
 demo/              Self-contained `make demo` (mocks for every collector)
 docs/              ARCHITECTURE.md, DETECTIONS.md, INTERVIEW_TALK_TRACK.md
 .github/workflows  Production-ready GitHub Action
@@ -333,7 +335,7 @@ docs/              ARCHITECTURE.md, DETECTIONS.md, INTERVIEW_TALK_TRACK.md
 - [docs/DETECTIONS.md](docs/DETECTIONS.md): every rule, false-positive notes, remediation
 - [docs/blog/the-graph-layer.md](docs/blog/the-graph-layer.md): design essay on why a graph is the right shape for cross-source ghost-access detection
 - [docs/INTERVIEW_TALK_TRACK.md](docs/INTERVIEW_TALK_TRACK.md): prepared narratives for portfolio conversations
-- [CHANGELOG.md](CHANGELOG.md): v0.1 milestone history
+- [CHANGELOG.md](CHANGELOG.md): full release + milestone history
 
 ## Why "Afterlife"
 

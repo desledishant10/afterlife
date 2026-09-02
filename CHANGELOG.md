@@ -44,6 +44,15 @@ or two commits and one or two of the milestones below.
   Access Advisor or CloudTrail saw it within the window (the more recent wins),
   cutting false positives where Access Advisor's last-accessed lags real
   activity. Findings carry `evidence.cloudtrail_refined`
+- New rule **PUBLIC-ROLE-TRUST** (Critical): an IAM role assumable by any AWS
+  principal via a wildcard `Principal` (`*`, `AWS: "*"`, or `arn:aws:iam::*:root`)
+  with no restricting condition. CROSS-ACCOUNT-TRUST deliberately skips these
+  wildcard forms, so they were silently passed before. Stays quiet when a
+  condition constrains who may assume (`aws:PrincipalOrgID`, `sts:ExternalId`, ...)
+- New rule **USER-WITHOUT-MFA** (Medium): an active non-admin identity (Google
+  Workspace today) with no 2-step verification, the non-admin counterpart to
+  ADMIN-WITHOUT-MFA. The Snowflake-2024 credential-stuffing pattern targeted
+  exactly this population
 
 ### Pro features
 
