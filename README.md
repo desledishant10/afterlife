@@ -25,7 +25,7 @@ miss it.
 
 ## Status
 
-`v0.1`. 9 source systems collected, 11 detection rules, 250+ tests.
+`v0.2`. 9 source systems collected, 12 detection rules, 330+ tests.
 
 ## Source systems
 
@@ -51,6 +51,7 @@ graph edges directly, even without shared email.
 | `ADMIN-WITHOUT-MFA` | Critical | IdP admin (Google Workspace today) without 2-step verification enforced. |
 | `UNUSED-CREDENTIAL` | High | Active credential not used in N days (default 90). |
 | `STALE-DEPLOY-KEY-WRITE` | High | Write-capable deploy key not used in N days. |
+| `STALE-OAUTH` | High | Write-scoped third-party OAuth grant not used in N days (default 90). |
 | `OUTSIDE-COLLAB-WITH-AWS` | High | GitHub outside collaborator linked to active AWS credentials. |
 | `INACTIVE-ADMIN` | High | Admin who hasn't logged in within the inactivity window. |
 | `UNROTATED-KEY` | Medium | Long-lived static cloud key (AWS / GCP) past the rotation threshold. |
@@ -296,7 +297,7 @@ text). The dashboard wraps the same readers behind FastAPI. Details in
 ```
 src/afterlife/
 ├── collectors/    9 collectors, one file each
-├── rules/         11 detection rules, one file each, decorator-registered
+├── rules/         12 detection rules, one file each, decorator-registered
 ├── graph/         Identity graph (NetworkX), email + Vault-alias linking
 ├── scoring/       Blast-radius scoring with explainable factors
 ├── reporting/     JSON, HTML, SARIF, PDF

@@ -534,6 +534,13 @@ def seed_google_routes(router) -> None:
         host="admin.googleapis.com",
         path="/admin/directory/v1/users",
     ).mock(return_value=httpx.Response(200, json={"users": users_json}))
+    # OAuth grants per user (none in the synthetic tenant, so the deterministic
+    # demo output is unchanged; the collector path is still exercised).
+    router.route(
+        method="GET",
+        host="admin.googleapis.com",
+        path__regex=r"^/admin/directory/v1/users/[^/]+/tokens$",
+    ).mock(return_value=httpx.Response(200, json={"items": []}))
 
 
 def _azure_user_json(spec: AzureUserSpec, idx: int) -> dict:

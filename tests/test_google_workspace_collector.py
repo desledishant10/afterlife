@@ -30,7 +30,17 @@ def _users_route():
     )
 
 
+def _tokens_route():
+    return respx.route(
+        method="GET",
+        host="admin.googleapis.com",
+        path__regex=r"^/admin/directory/v1/users/[^/]+/tokens$",
+    )
+
+
 def _run(fresh_db):
+    # Default: users have no OAuth grants (each test can override before this).
+    _tokens_route().mock(return_value=httpx.Response(200, json={"items": []}))
     return GoogleWorkspaceCollector(
         db_path=fresh_db, access_token="fake-token"
     ).run()
@@ -194,6 +204,67 @@ def test_never_logged_in_sentinel_normalized_to_none(fresh_db):
         row = conn.execute("SELECT metadata FROM identities").fetchone()
         meta = json.loads(row["metadata"])
         assert meta["last_login_time"] is None
+
+
+@respx.mock
+def test_collects_oauth_grants_as_credentials(fresh_db):
+    _users_route().mock(
+        return_value=httpx.Response(
+            200, json={"users": [_user("1", "alice@example.com")]}
+        )
+    )
+    _tokens_route().mock(
+        return_value=httpx.Response(200, json={"items": [
+            {
+                "clientId": "123.apps.googleusercontent.com",
+                "displayText": "Zapier",
+                "scopes": ["https://www.googleapis.com/auth/gmail.modify"],
+                "nativeApp": False,
+                "anonymous": False,
+            },
+            {
+                "clientId": "456.apps.googleusercontent.com",
+                "displayText": "Analytics (read-only)",
+                "scopes": ["https://www.googleapis.com/auth/analytics.readonly"],
+            },
+        ]})
+    )
+
+    GoogleWorkspaceCollector(db_path=fresh_db, access_token="fake-token").run()
+
+    with db.connect(fresh_db) as conn:
+        grants = conn.execute(
+            "SELECT credential_id, owner_source, owner_id, scopes, metadata "
+            "FROM credentials WHERE credential_type = 'oauth_grant' "
+            "ORDER BY credential_id"
+        ).fetchall()
+    assert len(grants) == 2
+    assert grants[0]["credential_id"] == "oauth:1:123.apps.googleusercontent.com"
+    assert all(g["owner_source"] == "google" and g["owner_id"] == "1" for g in grants)
+    assert json.loads(grants[0]["metadata"])["app"] == "Zapier"
+
+
+@respx.mock
+def test_missing_token_scope_is_tolerated(fresh_db):
+    _users_route().mock(
+        return_value=httpx.Response(
+            200, json={"users": [_user("1", "alice@example.com")]}
+        )
+    )
+    _tokens_route().mock(
+        return_value=httpx.Response(403, json={"error": {"message": "insufficient scope"}})
+    )
+
+    # The scan must not fail just because the token scope was not granted.
+    GoogleWorkspaceCollector(db_path=fresh_db, access_token="fake-token").run()
+
+    with db.connect(fresh_db) as conn:
+        n = conn.execute(
+            "SELECT COUNT(*) AS n FROM credentials WHERE credential_type='oauth_grant'"
+        ).fetchone()["n"]
+        users = conn.execute("SELECT COUNT(*) AS n FROM identities").fetchone()["n"]
+    assert n == 0
+    assert users == 1  # the user was still collected
 
 
 @respx.mock
