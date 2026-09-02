@@ -13,12 +13,15 @@ GH_API = "https://api.github.com"
 
 
 class GitHubCollector(Collector):
-    """Pulls org members, outside collaborators, GitHub App installations, and
-    per-repo deploy keys from one GitHub organization.
+    """Pulls org members, outside collaborators, GitHub App installations,
+    per-repo deploy keys, and (on Enterprise with SAML SSO) authorized personal
+    access tokens from one GitHub organization.
 
-    Personal Access Tokens are intentionally out of scope: the public REST API
-    does not expose them at the org level, and the Enterprise SAML SSO endpoint
-    (`/orgs/{org}/credential-authorizations`) requires Enterprise tier.
+    PATs come from `/orgs/{org}/credential-authorizations`, which is Enterprise
+    only; the call is best-effort, so a non-Enterprise org (404) or missing
+    scope (403) simply yields no PATs rather than failing the scan. PATs are
+    stored as `github_pat` credentials owned by their login, which lets
+    ORPHANED-GITHUB flag tokens whose owner has left the org.
     """
 
     source = "github"
@@ -71,6 +74,10 @@ class GitHubCollector(Collector):
         repos = self._paginate(
             f"/orgs/{self.org}/repos", params={"type": "all"}
         )
+        # Enterprise SAML SSO only; best-effort (404 on non-Enterprise orgs).
+        cred_auths = self._paginate(
+            f"/orgs/{self.org}/credential-authorizations", optional=True
+        )
 
         count = 0
         with db.connect(self.db_path) as conn:
@@ -83,6 +90,11 @@ class GitHubCollector(Collector):
             for install in installs:
                 db.upsert_credential(conn, self._installation_to_credential(install))
                 count += 1
+            for ca in cred_auths:
+                pat = self._credential_authorization_to_pat(ca)
+                if pat is not None:
+                    db.upsert_credential(conn, pat)
+                    count += 1
             for repo in repos:
                 # Repos we can't read keys for (private, no admin scope) 404 silently.
                 keys = self._paginate(
@@ -159,6 +171,35 @@ class GitHubCollector(Collector):
                 "app_slug": install.get("app_slug"),
                 "permissions": permissions,
                 "events": install.get("events"),
+            },
+        )
+
+    def _credential_authorization_to_pat(
+        self, ca: dict[str, Any]
+    ) -> Credential | None:
+        # Only model personal access tokens; SSH keys authorized for SSO are
+        # covered by the deploy-key rules, and skipping them keeps the type honest.
+        if "personal access token" not in (ca.get("credential_type") or "").lower():
+            return None
+        login = ca.get("login")
+        cred_id = ca.get("credential_id")
+        if not login or cred_id is None:
+            return None
+        return Credential(
+            source="github",
+            credential_id=f"pat:{login}:{cred_id}",
+            credential_type="github_pat",
+            owner_source="github",
+            owner_id=login,
+            created_at=_parse_dt(ca.get("credential_authorized_at")),
+            last_used_at=_parse_dt(ca.get("credential_accessed_at")),
+            scopes=list(ca.get("scopes") or []),
+            is_active=True,
+            metadata={
+                "credential_id": cred_id,
+                "credential_type": ca.get("credential_type"),
+                "token_last_eight": ca.get("token_last_eight"),
+                "authorized_at": ca.get("credential_authorized_at"),
             },
         )
 

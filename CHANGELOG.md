@@ -13,6 +13,11 @@ or two commits and one or two of the milestones below.
   as `oauth_grant` credentials, so grants are inventoried and OFFBOARDED-OWNER
   covers grants whose owner has left; full staleness detection needs a source
   that reports OAuth usage timestamps
+- New rule **ORPHANED-GITHUB** (High): an active GitHub personal access token
+  whose owning login is no longer a member or outside collaborator of the org.
+  The GitHub collector now ingests PATs as `github_pat` credentials from the
+  Enterprise SAML SSO credential-authorizations endpoint (best-effort; a
+  non-Enterprise org simply yields none)
 
 ### Pro features
 
