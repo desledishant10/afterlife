@@ -5,6 +5,20 @@ or two commits and one or two of the milestones below.
 
 ## Unreleased
 
+## v0.3.1 (September 2026)
+
+First PyPI release: `pip install afterlife-audit` is now live. Also ships offline
+license revocation, the Get Pro call-to-action, license-key backup tooling, and a
+marketing landing page.
+
+### Distribution
+
+- Published to PyPI: `pip install afterlife-audit` installs the CLI. The release
+  workflow's PyPI job publishes via trusted publishing (OIDC, no stored API token)
+- New landing page under `site/`, deployed to GitHub Pages by
+  `.github/workflows/pages.yml` (serves only `site/`, keeping the internal docs
+  off the public marketing URL)
+
 ### Commercial
 
 - Free users now see a "Get Pro" call-to-action with the founding price
