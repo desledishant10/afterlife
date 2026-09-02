@@ -13,6 +13,7 @@ from afterlife.rules.offboarded_owner import offboarded_owner
 from afterlife.rules.orphaned_identity import orphaned_identity
 from afterlife.rules.outside_collab_with_aws import outside_collab_with_aws
 from afterlife.rules.stale_deploy_key_write import stale_deploy_key_write
+from afterlife.rules.stale_oauth import is_write_scope, stale_oauth
 from afterlife.rules.unrotated_key import unrotated_key
 from afterlife.rules.unused_credential import unused_credential
 from tests.conftest import make_credential, make_identity
@@ -760,6 +761,7 @@ def test_rule_registry_discovers_all_rules():
         "CROSS-ACCOUNT-TRUST",
         "ADMIN-CONCENTRATION",
         "STALE-DEPLOY-KEY-WRITE",
+        "STALE-OAUTH",
     }
 
 
@@ -1112,3 +1114,86 @@ def test_admin_without_mfa_fires_when_both_signals_negative(fresh_db):
     with db.connect(fresh_db) as conn:
         findings = admin_without_mfa(conn, Config(), _graph(conn))
     assert len(findings) == 1
+
+
+# ---------- STALE-OAUTH ----------
+
+
+def _oauth_grant(**kw):
+    base = dict(
+        source="google",
+        credential_id="oauth:zapier:alice",
+        credential_type="oauth_grant",
+        owner_source="google",
+        owner_id="alice",
+        scopes=["https://www.googleapis.com/auth/gmail.modify"],
+        metadata={"app": "Zapier", "client_id": "123.apps.googleusercontent.com"},
+    )
+    base.update(kw)
+    return Credential(**base)
+
+
+def test_stale_oauth_fires_for_stale_write_grant(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _oauth_grant(last_used_at=now - timedelta(days=200)))
+    with db.connect(fresh_db) as conn:
+        findings = stale_oauth(conn, Config(oauth_stale_days=90), _graph(conn))
+    assert len(findings) == 1
+    assert findings[0].rule_id == "STALE-OAUTH"
+    assert findings[0].evidence["app"] == "Zapier"
+    assert "gmail.modify" in findings[0].evidence["write_scopes"][0]
+
+
+def test_stale_oauth_quiet_for_readonly_only_grant(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(
+            conn,
+            _oauth_grant(
+                credential_id="oauth:analytics:alice",
+                scopes=[
+                    "https://www.googleapis.com/auth/analytics.readonly",
+                    "openid",
+                    "email",
+                ],
+                last_used_at=now - timedelta(days=300),
+            ),
+        )
+    with db.connect(fresh_db) as conn:
+        findings = stale_oauth(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_stale_oauth_quiet_when_recently_used(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _oauth_grant(last_used_at=now - timedelta(days=10)))
+    with db.connect(fresh_db) as conn:
+        findings = stale_oauth(conn, Config(oauth_stale_days=90), _graph(conn))
+    assert findings == []
+
+
+def test_stale_oauth_quiet_when_usage_unknown(fresh_db):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(conn, _oauth_grant(last_used_at=None))
+    with db.connect(fresh_db) as conn:
+        findings = stale_oauth(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_stale_oauth_quiet_for_inactive_grant(fresh_db, now):
+    with db.connect(fresh_db) as conn:
+        db.upsert_credential(
+            conn, _oauth_grant(last_used_at=now - timedelta(days=200), is_active=False)
+        )
+    with db.connect(fresh_db) as conn:
+        findings = stale_oauth(conn, Config(), _graph(conn))
+    assert findings == []
+
+
+def test_is_write_scope():
+    assert is_write_scope("https://www.googleapis.com/auth/gmail.modify")
+    assert is_write_scope("https://mail.google.com/")
+    assert is_write_scope("https://www.googleapis.com/auth/drive")
+    assert not is_write_scope("https://www.googleapis.com/auth/gmail.readonly")
+    assert not is_write_scope("openid")
+    assert not is_write_scope("email")
+    assert not is_write_scope("https://www.googleapis.com/auth/userinfo.email")

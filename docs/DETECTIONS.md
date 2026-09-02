@@ -166,6 +166,38 @@ read-only key.
 
 ---
 
+## STALE-OAUTH
+
+**Severity:** High &middot; **Status:** Implemented
+
+An active third-party OAuth grant carries a write-tier scope and has not been
+used in `oauth_stale_days` days (default 90). Operates on `oauth_grant`
+credentials; a scope counts as write-tier unless it is an identity scope
+(openid / email / profile) or explicitly read-only.
+
+**Why it matters:** Third-party OAuth grants accumulate and are almost never
+revoked. The Zapier, analytics, or MailChimp integration authorized two years
+ago for a one-off task is still authorized to read or modify data, unmonitored,
+and is a quiet path to exfiltration if the app is compromised.
+
+**Remediation:** Revoke the grant if the app is no longer needed. If it is
+still required, confirm the owner, reduce its scopes to the minimum, and
+document why it exists.
+
+**Data source:** OAuth grants are ingested as `oauth_grant` credentials. The
+Google Workspace collector enumerates them from the Directory tokens API
+(scopes + app, best-effort so a missing token scope never breaks a scan). That
+API returns no usage timestamp, so full staleness detection needs a source that
+reports OAuth activity (e.g. the Google Reports API); grants without a usage
+timestamp are still inventoried and still caught by OFFBOARDED-OWNER when their
+owner leaves.
+
+**False positives:** A legitimately dormant-but-needed integration (a seasonal
+or annual job) will fire. Suppress it via the allowlist with a documented
+reason rather than leaving it unreviewed.
+
+---
+
 ## OUTSIDE-COLLAB-WITH-AWS
 
 **Severity:** High &middot; **Status:** Implemented
@@ -287,21 +319,6 @@ Mitigation: rule fires at low severity, treated as informational.
 These rules are documented placeholders for work that requires data we don't
 yet collect. They sit in the doc to signal intent and to make the gap
 visible.
-
-### STALE-OAUTH
-
-**Severity:** High &middot; **Status:** Planned (needs OAuth grant inventory)
-
-OAuth grant whose last API call is older than `oauth_stale_days` (default 90)
-and whose granted scopes include any write-tier permission.
-
-Third-party OAuth apps accumulate. The MailChimp / Slack / Zapier integration
-someone set up two years ago for a one-time campaign is still authorized to
-read every channel, and the company likely no longer monitors it for
-compromise.
-
-Requires: per-user OAuth grant enumeration from Google Workspace (tokens
-endpoint), Slack (admin.users.list with apps), or similar.
 
 ### PRIVILEGE-DRIFT
 

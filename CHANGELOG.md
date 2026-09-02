@@ -5,6 +5,15 @@ or two commits and one or two of the milestones below.
 
 ## Unreleased
 
+### Detection
+
+- New rule **STALE-OAUTH** (High): an active third-party OAuth grant with a
+  write-tier scope unused for `oauth_stale_days` (default 90). The Google
+  Workspace collector now ingests OAuth grants (from the Directory tokens API)
+  as `oauth_grant` credentials, so grants are inventoried and OFFBOARDED-OWNER
+  covers grants whose owner has left; full staleness detection needs a source
+  that reports OAuth usage timestamps
+
 ### Pro features
 
 - Jira ticketing integration: `afterlife analyze --notify` files a remediation

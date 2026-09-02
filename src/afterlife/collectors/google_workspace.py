@@ -22,11 +22,14 @@ import jwt
 
 from afterlife import db
 from afterlife.collectors.base import Collector
-from afterlife.models import Identity
+from afterlife.models import Credential, Identity
 
 API_BASE = "https://admin.googleapis.com"
 TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
-SCOPE = "https://www.googleapis.com/auth/admin.directory.user.readonly"
+SCOPE = (
+    "https://www.googleapis.com/auth/admin.directory.user.readonly "
+    "https://www.googleapis.com/auth/admin.directory.user.security"
+)
 
 
 class GoogleWorkspaceCollector(Collector):
@@ -95,7 +98,45 @@ class GoogleWorkspaceCollector(Collector):
             for user in self._iter_users(client):
                 db.upsert_identity(conn, self._user_to_identity(user))
                 count += 1
+                for grant in self._iter_oauth_grants(client, str(user["id"])):
+                    db.upsert_credential(conn, grant)
+                    count += 1
         return count
+
+    def _iter_oauth_grants(
+        self, client: httpx.Client, user_id: str
+    ) -> Iterator[Credential]:
+        """Third-party OAuth grants for a user, as `oauth_grant` credentials.
+
+        Best-effort: if the token scope was not granted (or the user has none),
+        the request fails and we simply collect no grants for that user rather
+        than aborting the whole scan. The Directory tokens API returns the
+        granted scopes and the app, but no usage timestamp, so `last_used_at`
+        is left unset; STALE-OAUTH needs a usage source to fire, while
+        OFFBOARDED-OWNER already covers grants whose owner has left.
+        """
+        try:
+            resp = client.get(f"/admin/directory/v1/users/{user_id}/tokens")
+            resp.raise_for_status()
+        except httpx.HTTPError:
+            return
+        for token in resp.json().get("items", []):
+            client_id = token.get("clientId") or "unknown"
+            yield Credential(
+                source="google",
+                credential_id=f"oauth:{user_id}:{client_id}",
+                credential_type="oauth_grant",
+                owner_source="google",
+                owner_id=user_id,
+                scopes=list(token.get("scopes") or []),
+                is_active=True,
+                metadata={
+                    "app": token.get("displayText"),
+                    "client_id": client_id,
+                    "native_app": token.get("nativeApp"),
+                    "anonymous": token.get("anonymous"),
+                },
+            )
 
     def _iter_users(self, client: httpx.Client) -> Iterator[dict[str, Any]]:
         page_token: str | None = None
