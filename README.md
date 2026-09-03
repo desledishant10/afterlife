@@ -80,9 +80,9 @@ make demo
 ```
 
 The demo plants synthetic users, credentials, and IdP records across every
-collector, runs them, and produces 20 deterministic findings with one
-`OFFBOARDED-OWNER` (bob, broad blast) and one `ADMIN-CONCENTRATION` (dave is
-admin in 3 systems). Identity graph: 16 persons across 8 sources, 6
+collector, runs them, and produces 20 deterministic findings including three
+`OFFBOARDED-OWNER` findings (bob's has the broadest blast) and one
+`ADMIN-CONCENTRATION` (dave is admin in 3 systems: AWS, Google, Slack). Identity graph: 16 persons across 8 sources, 6
 cross-source. Demo also writes `.afterlife-demo-report.html` you can open in
 a browser.
 

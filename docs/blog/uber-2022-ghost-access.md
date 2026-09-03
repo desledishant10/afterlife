@@ -126,7 +126,7 @@ afterlife run --notify         # scan your own; alert on new ghost access
 ```
 
 `make demo` reproduces output like the block above on synthetic data (one
-`ADMIN-CONCENTRATION` across three systems, one `OFFBOARDED-OWNER`), so you can
+`ADMIN-CONCENTRATION` across three systems and three `OFFBOARDED-OWNER` findings), so you can
 see the shape before pointing it at anything real. Against your own environment
 it uses read-only credentials from the environment and writes to a local SQLite
 file. Nothing leaves your box, and nothing phones home.
