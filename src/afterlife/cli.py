@@ -712,5 +712,143 @@ def report(
         print(content)
 
 
+@app.command()
+def evidence(
+    db_path: Path = DEFAULT_DB,
+    output: Path | None = typer.Option(
+        None, "--output", "-o",
+        help="Where to write the pack (default: afterlife-evidence-<date>.<ext>).",
+    ),
+    fmt: str = typer.Option(
+        "json", "--format", help="json (signed pack) | html (readable, embeds the pack)"
+    ),
+    key_file: Path | None = typer.Option(
+        None, "--key-file",
+        help="Attestation signing key (default: next to the database).",
+    ),
+) -> None:
+    """Generate a signed, tamper-evident audit-evidence pack (Pro)."""
+    import json as _json
+    from datetime import UTC, datetime
+
+    from afterlife.licensing import (
+        FEATURE_EVIDENCE_PACK,
+        current_license,
+        has_feature,
+    )
+
+    if not has_feature(FEATURE_EVIDENCE_PACK):
+        console.print(
+            "[red]Signed audit-evidence packs are a Pro feature.[/red] "
+            "Run `afterlife license` for status; set AFTERLIFE_LICENSE to enable."
+        )
+        raise typer.Exit(1)
+
+    from afterlife.evidence import fingerprint, generate_evidence, render_html
+
+    lic = current_license()
+    pack = generate_evidence(
+        db_path, key_path=key_file, licensed_to=(lic.customer if lic else None)
+    )
+    if fmt == "html":
+        content, ext = render_html(pack), "html"
+    elif fmt == "json":
+        content, ext = _json.dumps(pack, indent=2), "json"
+    else:
+        console.print(f"[red]Unknown format: {fmt}[/red] (use json or html)")
+        raise typer.Exit(1)
+
+    out = output or Path(f"afterlife-evidence-{datetime.now(UTC):%Y-%m-%d}.{ext}")
+    out.write_text(content)
+    payload = pack["payload"]
+    console.print(f"[green]Wrote signed evidence pack:[/green] {out}")
+    console.print(f"  attestation id:          {payload['attestation_id']}")
+    console.print(f"  signing-key fingerprint: {fingerprint(pack['public_key'])}")
+    console.print(
+        "  [dim]Share this fingerprint with your auditor so they can pin it "
+        "when verifying.[/dim]"
+    )
+    console.print(
+        f"  open findings: {payload['summary']['open_total']}, "
+        f"resolved: {payload['summary']['resolved_total']}"
+    )
+    console.print(f"  Verify with: [cyan]afterlife verify-evidence {out}[/cyan]")
+
+
+def _fingerprint_matches(pin: str, fp: str) -> bool:
+    """A pin matches on an exact fingerprint, or a >=128-bit (32 hex) prefix."""
+    norm = pin.strip().lower().replace(":", "").replace(" ", "")
+    return norm == fp or (len(norm) >= 32 and fp.startswith(norm))
+
+
+@app.command("verify-evidence")
+def verify_evidence_cmd(
+    path: Path = typer.Argument(
+        ..., help="Path to an evidence pack (.json or .html)."
+    ),
+    pin: str | None = typer.Option(
+        None, "--pin",
+        help="Expected signing-key fingerprint; origin is trusted only on a match.",
+    ),
+) -> None:
+    """Verify an evidence pack's signature (free, offline, no license needed).
+
+    A valid signature proves only that the pack is internally consistent and
+    unaltered since signing. To also trust WHO signed it, pass --pin with the
+    fingerprint you obtained from the signer out of band.
+    """
+    from afterlife.evidence import fingerprint, load_pack, verify_evidence
+
+    try:
+        pack = load_pack(path)
+    except (OSError, ValueError) as e:
+        console.print(f"[red]Cannot read a pack from {path}:[/red] {e}")
+        raise typer.Exit(1) from None
+
+    ok, payload, reason = verify_evidence(pack)
+    if not ok or payload is None:
+        console.print(f"[red]INVALID[/red] {reason}")
+        raise typer.Exit(1)
+
+    summary = payload.get("summary", {})
+    fp = fingerprint(pack["public_key"])
+    console.print(
+        "[green]Signature VALID[/green]: internally consistent and unaltered "
+        "since signing."
+    )
+    console.print(f"  attestation id:          {payload.get('attestation_id')}")
+    console.print(f"  generated at:            {payload.get('generated_at')}")
+    console.print(f"  tool:                    afterlife {payload.get('tool_version')}")
+    if payload.get("licensed_to"):
+        console.print(
+            f"  claimed licensed-to:     {payload['licensed_to']} "
+            "[dim](self-asserted, not verified)[/dim]"
+        )
+    console.print(f"  signing-key fingerprint: {fp}")
+    console.print(
+        f"  open findings: {summary.get('open_total')}, "
+        f"resolved: {summary.get('resolved_total')}, "
+        f"MTTR: {summary.get('mean_time_to_remediate_days')} days"
+    )
+
+    if pin:
+        if _fingerprint_matches(pin, fp):
+            console.print(
+                "[green]Origin TRUSTED[/green]: fingerprint matches the pinned value."
+            )
+        else:
+            console.print(
+                "[red]Origin UNVERIFIED[/red]: fingerprint does NOT match --pin; "
+                "this pack was not signed by the expected key."
+            )
+            raise typer.Exit(2)
+    else:
+        console.print(
+            "[yellow]Origin is unverified.[/yellow] Trust it only if the "
+            "fingerprint above matches one you obtained from the signer directly; "
+            "pass [cyan]--pin <fingerprint>[/cyan] to check automatically."
+        )
+
+
 if __name__ == "__main__":
     app()

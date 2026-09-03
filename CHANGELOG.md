@@ -5,6 +5,18 @@ or two commits and one or two of the milestones below.
 
 ## Unreleased
 
+### Pro features
+
+- **Audit-evidence packs** (`afterlife evidence`, Pro): a signed, tamper-evident
+  attestation of an access review at a point in time, open and resolved findings,
+  MTTR, blast picture, and scan history, exportable as JSON or a readable HTML
+  document a SOC 2 / ISO auditor accepts as-is. Signed with a local Ed25519 key
+  (the customer's own, generated mode-600 next to the DB, never leaving the box).
+  `afterlife verify-evidence` checks a pack's signature and is **free and
+  offline**, so any auditor can verify one without a license. This is the first
+  Pro capability a buyer cannot rebuild with a reverse proxy or a webhook, and it
+  earns the $1,900 standard rate
+
 ## v0.3.1 (September 2026)
 
 First PyPI release: `pip install afterlife-audit` is now live. Also ships offline
