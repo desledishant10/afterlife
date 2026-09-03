@@ -29,8 +29,14 @@ flow without paying. Create it in Polar:
 
 ## Part 2: dry-run checklist (prove buy to activation)
 
-Run this once, start to finish, in Polar **test mode** (before you finish KYC and
-go live). Check each box.
+**Prerequisite:** your Polar organization must be **activated to accept payments**
+first (identity verification + payout connected; see Part 6). Polar blocks every
+checkout until then, including a $0 TEST100 one, with "Organization is not ready
+to accept payments." Once activated, TEST100 makes this a real $0 checkout so you
+exercise the whole flow without spending money. (To rehearse before activation,
+use Polar's separate sandbox at sandbox.polar.sh, which needs no KYC.)
+
+Run this once, start to finish. Check each box.
 
 - [ ] **Checkout at $0.** Open your checkout link
       (`https://buy.polar.sh/polar_cl_qvXw4txhqGaPXKuepbXsgfjVnlbpzp0Wbxnm730BFMK`),
@@ -110,10 +116,15 @@ Annual. When a subscription renews in Polar (or a year passes), mint a fresh
 `jti` and `expires_at`. At expiry an un-renewed license simply locks the Pro
 features; the full free core keeps running, so a lapse never breaks the tool.
 
-## Part 6: going live (do before promoting the site)
+## Part 6: activate the store (do this first, and before promoting the site)
+
+Until this is done, checkout shows "Organization is not ready to accept
+payments" and nothing can be purchased.
 
 - [ ] Finish Polar **identity verification (KYC)** and connect a **payout
-      account**, then switch the store to **live mode**.
+      account** (Dashboard → **Finish setting up your account** / **Continue
+      setup**, or **Settings → Finance/Payout**). Complete every required step;
+      Polar then reviews and activates the organization.
 - [ ] **Delete or disable `TEST100`** (or confirm its redemption cap is spent) so
       no real visitor checks out for free.
 - [ ] Confirm the signing key is **backed up offsite** (see
