@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thank you</title>
+<meta name="description" content="Payment received for Afterlife Pro. Your signed license key will be emailed shortly.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%91%BB%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#0A0E14; --surface:#111722; --surface-2:#161D2A;
+    --border:#232B38; --border-strong:#37414F;
+    --text:#E7ECF3; --muted:#8792A3; --accent:#37E2C5; --accent-ink:#04120F;
+    --ok:#63D98A;
+    --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --display:"Space Grotesk",ui-sans-serif,system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; background:var(--ground); color:var(--text);
+    font-family:var(--sans); font-size:17px; line-height:1.6;
+    display:flex; align-items:center; justify-content:center; padding:32px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .card{max-width:600px; width:100%; background:linear-gradient(180deg,var(--surface),var(--surface-2)); border:1px solid var(--border); border-radius:18px; padding:40px 36px}
+  .glyph{width:44px; height:44px; border-radius:50%; background:var(--accent-ink); border:1px solid var(--accent); display:flex; align-items:center; justify-content:center; margin-bottom:22px; box-shadow:0 0 28px -6px var(--accent)}
+  .glyph span{width:12px; height:12px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px 1px var(--accent)}
+  h1{font-family:var(--display); font-weight:700; letter-spacing:-.02em; font-size:1.9rem; margin:0 0 10px}
+  p{margin:0 0 16px; color:var(--text)}
+  .muted{color:var(--muted); font-size:.95rem}
+  ol{margin:20px 0; padding:0; list-style:none; counter-reset:s}
+  li{position:relative; padding:0 0 16px 40px; counter-increment:s}
+  li::before{content:counter(s); position:absolute; left:0; top:-2px; width:26px; height:26px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border-strong); color:var(--accent); font-family:var(--mono); font-size:.82rem; display:flex; align-items:center; justify-content:center}
+  code, .mono{font-family:var(--mono); font-size:.9em}
+  .cmd{display:block; background:var(--ground); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-top:8px; color:var(--text); overflow-x:auto; white-space:nowrap}
+  a{color:var(--accent)}
+  .ref{font-family:var(--mono); font-size:.8rem; color:var(--muted); margin-top:24px; border-top:1px solid var(--border); padding-top:16px}
+  .foot{margin-top:8px}
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="glyph" aria-hidden="true"><span></span></div>
+    <h1>Payment received. Thank you.</h1>
+    <p>Your Afterlife Pro license is being prepared. Here is what happens next:</p>
+    <ol>
+      <li><strong>Your license key arrives by email</strong> within one business day, sent to the address you used at checkout. It is a signed token, verified locally, that unlocks the Pro features.</li>
+      <li><strong>Activate it</strong> by setting it in your environment, then confirm with <code>afterlife license</code>:
+        <code class="cmd">export AFTERLIFE_LICENSE=&lt;your token&gt;</code>
+      </li>
+      <li><strong>Anything off?</strong> Check your spam folder first, then email <a href="mailto:didesle7@gmail.com?subject=Afterlife%20Pro%20license">didesle7@gmail.com</a> and we will sort it out.</li>
+    </ol>
+    <p class="muted">Detection stays free forever; your Pro license adds dashboard auth, SSO, Jira ticketing, and signed audit-evidence packs.</p>
+    <p class="foot muted"><a href="https://desledishant10.github.io/afterlife/">Back to Afterlife</a> &nbsp;·&nbsp; <a href="https://github.com/desledishant10/afterlife">Docs on GitHub</a></p>
+    <p class="ref" id="orderref" hidden></p>
+  </main>
+  <script>
+    (function(){
+      try{
+        var id = new URLSearchParams(location.search).get("checkout_id");
+        if(id){ var el=document.getElementById("orderref"); el.textContent="Order reference: "+id; el.hidden=false; }
+      }catch(e){}
+    })();
+  </script>
+</body>
+</html>
