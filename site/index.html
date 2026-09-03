@@ -176,7 +176,7 @@
   .qcard .qlabel .num{color:var(--accent)}
   .qcard .qnote{color:var(--muted); font-size:.86rem; margin-top:12px; margin-bottom:0}
 
-  /* editions — side-by-side comparison */
+  /* editions: side-by-side comparison */
   .cmp{display:grid; grid-template-columns:minmax(0,1fr) 118px 118px; gap:1px; background:var(--border); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-top:28px}
   .cmp > div{background:var(--surface); padding:13px 18px; font-size:.93rem}
   .cmp .feat{color:var(--text); align-self:center}
@@ -362,7 +362,7 @@
         <div class="term-bar"><span class="lights"><i></i><i></i><i></i></span>&nbsp; afterlife · ghost-access audit</div>
         <div class="term-body"><pre><span class="cmd">$ afterlife analyze</span>
 <span class="sev sev-critical">CRITICAL</span>  <span class="rid">OFFBOARDED-OWNER</span>     <span class="dim">aws iam key AKIA...QF7   owner bob suspended in Okta 41d ago</span>
-<span class="sev sev-critical">CRITICAL</span>  <span class="rid">ADMIN-CONCENTRATION</span>  <span class="dim">person dave             admin in Google Workspace + AWS + GitHub</span>
+<span class="sev sev-critical">CRITICAL</span>  <span class="rid">ADMIN-CONCENTRATION</span>  <span class="dim">person dave             admin in Google Workspace + AWS + Slack</span>
 <span class="sev sev-critical">CRITICAL</span>  <span class="rid">PUBLIC-ROLE-TRUST</span>    <span class="dim">aws role/ci-deploy      Principal "*", no restricting condition</span>
 <span class="sev sev-high">HIGH</span>      <span class="rid">ORPHANED-GITHUB</span>      <span class="dim">github pat ghp_...9c    owner left the org, token still live</span>
 <span class="sev sev-high">HIGH</span>      <span class="rid">STALE-OAUTH</span>          <span class="dim">google oauth: Zapier    write scope, unused 213d</span>
@@ -370,7 +370,7 @@
 <span class="sum">20 findings, 16 persons across 8 sources (6 cross-source), ranked by blast radius.</span></pre></div>
       </div>
     </div>
-    <p class="termcap">Real output format. Reproduce every finding locally with <b style="color:var(--text)">make demo</b>.</p>
+    <p class="termcap">Representative output. Run <b style="color:var(--text)">make demo</b> to generate a full report on synthetic data.</p>
   </div>
 
   <!-- PROBLEM -->
@@ -558,7 +558,7 @@
         <div class="qcard reveal">
           <div class="qlabel"><span class="num">02</span> See it work</div>
           <button class="copy" data-copy="make demo" style="width:100%"><span class="prompt">$</span> make demo <span class="ic"></span></button>
-          <p class="qnote">20 deterministic findings across 8 sources in about a minute (one OFFBOARDED-OWNER, one ADMIN-CONCENTRATION across three systems), and writes an HTML report you can open in a browser.</p>
+          <p class="qnote">20 deterministic findings across 8 sources in about a minute (three OFFBOARDED-OWNER, one ADMIN-CONCENTRATION across three systems), and writes an HTML report you can open in a browser.</p>
         </div>
         <div class="qcard reveal">
           <div class="qlabel"><span class="num">03</span> Scan your own</div>
