@@ -38,6 +38,13 @@ _ALGORITHM = "EdDSA"
 _REVOKED_JTIS: frozenset[str] = frozenset()
 
 # Pro feature registry: id -> human description (shown by `afterlife license`).
+#
+# The open-core line: Pro is team, scale, and operational surface, never
+# detection. All 16 rules, the identity graph, blast scoring, alerting, and the
+# trends view (MTTR, burn-down) stay free forever. The next Pro capability is a
+# signed, scheduled audit-evidence pack (add FEATURE_EVIDENCE_PACK here and gate
+# the signing/scheduling path on it); its paid value is the tamper-evident
+# signature and the schedule, never withheld history.
 FEATURE_DASHBOARD_AUTH = "dashboard_auth"
 FEATURE_INTEGRATIONS = "integrations"
 FEATURE_SSO = "sso"

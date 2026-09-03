@@ -265,13 +265,16 @@ time.
 
 ## Editions
 
-Afterlife is **open core**. Everything above is free and always will be:
-detection, the identity graph, blast scoring, monitoring with history,
-alerting, `run` / `watch`, reports, and the local dashboard.
+Afterlife is **open core**, and the line is simple: you pay for team, scale, and
+operational surface, never for detection. Free forever: all 16 detection rules,
+the identity graph, blast scoring, monitoring with history, alerting, `run` /
+`watch`, reports, and the local dashboard including the trends view with MTTR and
+burn-down.
 
-**Pro** adds team/enterprise features, unlocked by an offline license key (a
-signed token verified locally against an embedded public key -- no license
-server, nothing phones home):
+**Pro** is not the finding, it is the team layer around it: shared, authenticated
+access and ticketing today, and a signed audit-evidence pack next. It is unlocked
+by an offline license key (a signed token verified locally against an embedded
+public key -- no license server, nothing phones home):
 
 | Pro feature | |
 |---|---|
