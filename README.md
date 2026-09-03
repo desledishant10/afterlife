@@ -344,6 +344,7 @@ docs/              ARCHITECTURE.md, DETECTIONS.md, INTERVIEW_TALK_TRACK.md
 - [docs/DETECTIONS.md](docs/DETECTIONS.md): every rule, false-positive notes, remediation
 - [docs/blog/the-graph-layer.md](docs/blog/the-graph-layer.md): design essay on why a graph is the right shape for cross-source ghost-access detection
 - [docs/blog/uber-2022-ghost-access.md](docs/blog/uber-2022-ghost-access.md): breach teardown, the Uber 2022 breach as a blast-radius problem and the rules that map to it
+- [docs/blog/snowflake-2024-ghost-access.md](docs/blog/snowflake-2024-ghost-access.md): breach teardown, the Snowflake 2024 breaches as a missing-second-factor problem and why the pattern generalizes
 - [docs/INTERVIEW_TALK_TRACK.md](docs/INTERVIEW_TALK_TRACK.md): prepared narratives for portfolio conversations
 - [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md): backing up and rotating the license-signing key (maintainers)
 - [docs/SELLING.md](docs/SELLING.md): selling and fulfillment runbook, the TEST100 dry run, and the customer ledger (maintainers)
