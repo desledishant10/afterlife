@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Afterlife vs Prowler and Cartography</title>
+<meta name="description" content="An honest comparison of Afterlife, Prowler, and Cartography. Config benchmarking, asset-inventory graphs, and cross-source ghost-access detection answer different questions. Here is which tool fits which.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%91%BB%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#0A0E14; --surface:#111722; --surface-2:#161D2A;
+    --border:#232B38; --border-strong:#37414F;
+    --text:#E7ECF3; --muted:#8792A3; --spectral:#3A4353;
+    --accent:#37E2C5; --accent-ink:#04120F; --accent-glow:#17403A;
+    --sev-critical:#F85149; --sev-high:#D2A8FF; --sev-medium:#F0883E; --sev-low:#58A6FF;
+    --ok:#63D98A;
+    --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --display:"Space Grotesk",ui-sans-serif,system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --wrap:1120px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:var(--ground); color:var(--text); font-family:var(--sans); font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; overflow-x:hidden}
+  ::selection{background:var(--accent-glow); color:var(--text)}
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1,h2,h3{font-family:var(--display); font-weight:700; letter-spacing:-.02em; line-height:1.1; text-wrap:balance; margin:0}
+  p{margin:0 0 1rem}
+  .wrap{max-width:var(--wrap); margin:0 auto; padding:0 24px}
+  .mono{font-family:var(--mono)}
+  .eyebrow{font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; color:var(--muted); margin:0 0 18px}
+  section{padding:72px 0; border-top:1px solid var(--border)}
+  .sec-head{font-size:clamp(1.5rem,3.2vw,2.1rem); margin-bottom:14px}
+  .lede{color:var(--muted); max-width:66ch; font-size:1.02rem}
+
+  .btn{display:inline-flex; align-items:center; gap:.5rem; font-family:var(--display); font-weight:500; font-size:.98rem; padding:.72rem 1.15rem; border-radius:10px; border:1px solid transparent; cursor:pointer; transition:transform .12s ease, background .15s ease, border-color .15s ease}
+  .btn:hover{text-decoration:none; transform:translateY(-1px)}
+  .btn-primary{background:var(--accent); color:var(--accent-ink); box-shadow:0 0 0 1px var(--accent), 0 8px 30px -12px var(--accent)}
+  .btn-primary:hover{background:#54ecd2}
+  .btn-ghost{background:transparent; color:var(--text); border-color:var(--border-strong)}
+  .btn-ghost:hover{border-color:var(--muted); background:var(--surface)}
+  .btn:focus-visible, a:focus-visible, .copy:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:8px}
+
+  .copy{display:inline-flex; align-items:center; gap:.6rem; font-family:var(--mono); font-size:.92rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:.6rem .8rem; cursor:pointer; user-select:none; white-space:nowrap; overflow-x:auto; max-width:100%}
+  .copy:hover{border-color:var(--border-strong)}
+  .copy .prompt{color:var(--muted)}
+  .copy .ic{margin-left:auto; color:var(--muted); font-size:.78rem; font-family:var(--sans)}
+  .copy.copied .ic{color:var(--ok)}
+  .copy.copied .ic::after{content:"copied"}
+  .copy .ic::after{content:"copy"}
+
+  /* topbar */
+  .topbar{position:sticky; top:0; z-index:20; backdrop-filter:blur(10px); background:color-mix(in srgb, var(--ground) 78%, transparent); border-bottom:1px solid var(--border)}
+  .topbar .wrap{display:flex; align-items:center; gap:20px; height:60px}
+  .brand{font-family:var(--display); font-weight:700; letter-spacing:-.02em; font-size:1.08rem; display:flex; align-items:center; gap:.5rem; color:var(--text)}
+  .brand:hover{text-decoration:none}
+  .brand .glyph{width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px 1px var(--accent)}
+  .topbar nav{margin-left:auto; display:flex; gap:22px; align-items:center}
+  .topbar nav a{color:var(--muted); font-size:.92rem}
+  .topbar nav a:hover{color:var(--text); text-decoration:none}
+  .topbar .navcta{color:var(--accent-ink); background:var(--accent); padding:.4rem .8rem; border-radius:8px; font-weight:500; font-family:var(--display)}
+  .topbar .navcta:hover{text-decoration:none}
+  @media(max-width:720px){ .topbar nav .hidesm{display:none} }
+
+  /* hero */
+  .hero{padding:64px 0 24px; border-top:none}
+  .hero h1{font-size:clamp(2.1rem,5vw,3.2rem); margin:0 0 18px; max-width:20ch}
+  .hero .lede{font-size:1.12rem; max-width:60ch}
+
+  /* thesis blocks */
+  .thesis{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; margin-top:8px}
+  @media(max-width:820px){ .thesis{grid-template-columns:minmax(0,1fr)} }
+  .tcard{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px}
+  .tcard.me{border-color:var(--border-strong); background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+  .tcard h3{font-size:1.05rem; margin-bottom:4px}
+  .tcard .who{font-family:var(--mono); font-size:.72rem; color:var(--muted); margin-bottom:12px}
+  .tcard.me .who{color:var(--accent)}
+  .tcard .q{color:var(--text); font-size:.95rem; margin-bottom:10px}
+  .tcard .q b{font-weight:600}
+  .tcard p{color:var(--muted); font-size:.9rem; margin:0}
+
+  /* comparison table */
+  .cmp-wrap{overflow-x:auto; margin-top:26px}
+  .cmp{display:grid; grid-template-columns:minmax(210px,1.6fr) repeat(3,minmax(96px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:14px; overflow:hidden; min-width:660px}
+  .cmp > div{background:var(--surface); padding:12px 16px; font-size:.9rem}
+  .cmp .feat{color:var(--text); align-self:center}
+  .cmp .feat .q{color:var(--muted); font-size:.8rem}
+  .cmp .col{display:flex; align-items:center; justify-content:center; text-align:center}
+  .cmp .af{background:color-mix(in srgb, var(--accent) 6%, var(--surface))}
+  .cmp .yes{color:var(--text); font-weight:600; font-size:1rem}
+  .cmp .af .yes{color:var(--accent)}
+  .cmp .par{color:var(--sev-medium); font-weight:600; font-size:1rem}
+  .cmp .no{color:var(--spectral); font-weight:600; font-size:1rem}
+  .cmp .val{font-family:var(--mono); font-size:.78rem; color:var(--muted); line-height:1.35}
+  .cmp .af .val{color:var(--text)}
+  /* header row */
+  .cmp .h{display:flex; flex-direction:column; align-items:center; justify-content:flex-end; text-align:center; gap:4px; padding:16px 12px 14px}
+  .cmp .h.feat{align-items:flex-start; text-align:left}
+  .cmp .plan{font-family:var(--display); font-weight:700; font-size:1rem; color:var(--text); line-height:1.1}
+  .cmp .plansub{font-family:var(--mono); font-size:.68rem; color:var(--muted)}
+  .cmp .h.af{background:linear-gradient(180deg, color-mix(in srgb,var(--accent) 15%,var(--surface)), color-mix(in srgb,var(--accent) 6%,var(--surface))); box-shadow:inset 0 3px 0 var(--accent)}
+  .cmp .h.af .plansub{color:var(--text)}
+  .cmp .h.feat .plansub{font-size:.72rem; letter-spacing:.04em}
+  .legend{display:flex; flex-wrap:wrap; gap:16px; margin-top:14px; font-family:var(--mono); font-size:.76rem; color:var(--muted)}
+  .legend b{font-weight:400}
+  .legend .yes{color:var(--text)} .legend .par{color:var(--sev-medium)} .legend .no{color:var(--spectral)}
+  .cmp-note{color:var(--muted); font-size:.82rem; margin-top:14px; max-width:74ch}
+
+  /* when-to blocks reuse .thesis grid */
+  .use h3{font-size:1.05rem; margin-bottom:6px}
+  .use .who{font-family:var(--mono); font-size:.72rem; color:var(--muted); margin-bottom:10px}
+  .use p{color:var(--muted); font-size:.92rem; margin:0}
+
+  /* together callout */
+  .together{background:var(--surface-2); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:12px; padding:22px 24px; margin-top:8px}
+  .together p{margin:0 0 10px}
+  .together p:last-child{margin:0}
+  .together .steps{list-style:none; padding:0; margin:14px 0 0; display:grid; gap:10px}
+  .together .steps li{display:flex; gap:12px; align-items:baseline; color:var(--muted); font-size:.94rem}
+  .together .steps .n{font-family:var(--mono); font-size:.8rem; color:var(--accent); flex:0 0 auto}
+  .together .steps b{color:var(--text); font-weight:600}
+
+  /* cta */
+  .cta-row{display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:22px}
+
+  /* footer */
+  footer{border-top:1px solid var(--border); padding:48px 0 44px; background:var(--surface)}
+  .foot-inner{display:flex; flex-wrap:wrap; gap:24px 48px; align-items:flex-start; justify-content:space-between}
+  .foot-close{font-family:var(--display); color:var(--muted); font-size:1.05rem; letter-spacing:-.01em; margin:14px 0 0; max-width:34ch}
+  .foot-close b{color:var(--text); font-weight:500}
+  .foot-meta{font-family:var(--mono); font-size:.8rem; color:var(--muted); display:flex; flex-direction:column; gap:9px; text-align:right}
+  .foot-meta a{color:var(--accent)}
+  @media(max-width:640px){ .foot-meta{text-align:left} }
+
+  .reveal{opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease}
+  .reveal.in{opacity:1; transform:none}
+  @media (prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none; transition:none} }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./"><span class="glyph"></span>Afterlife</a>
+    <nav>
+      <a href="./#problem" class="hidesm">Problem</a>
+      <a href="./#detections" class="hidesm">Detections</a>
+      <a href="./#editions" class="hidesm">Editions</a>
+      <a href="https://github.com/desledishant10/afterlife" class="navcta">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Comparison</p>
+      <h1>Afterlife vs Prowler and Cartography</h1>
+      <p class="lede">These three get named in the same breath, but they answer different questions. This is an honest map of which tool fits which question, including the ones where Afterlife is not the answer.</p>
+    </div>
+  </section>
+
+  <!-- THESIS -->
+  <section>
+    <div class="wrap">
+      <h2 class="sec-head reveal">Three tools, three different questions</h2>
+      <p class="lede reveal">Before the feature grid, the one distinction that actually decides which to use: what question each was built to answer.</p>
+      <div class="thesis reveal">
+        <div class="tcard">
+          <h3>Prowler</h3>
+          <div class="who">also ScoutSuite · Apache-2.0 / open source</div>
+          <p class="q"><b>Is this cloud account configured to a benchmark?</b></p>
+          <p>Config posture and compliance for one cloud at a time. Hundreds of checks mapped to CIS, PCI, HIPAA, SOC 2, and more. If you need a CIS benchmark across your AWS accounts, this is the tool, not Afterlife.</p>
+        </div>
+        <div class="tcard">
+          <h3>Cartography</h3>
+          <div class="who">Apache-2.0 / open source · Neo4j</div>
+          <p class="q"><b>Show me all my infrastructure as a graph I can query.</b></p>
+          <p>An asset-inventory graph across many sources, including AWS, GCP, GitHub, Okta, and Google. It hands you the nodes, the edges, and a Neo4j to run Cypher against. Enormous flexibility; you write the analysis.</p>
+        </div>
+        <div class="tcard me">
+          <h3>Afterlife</h3>
+          <div class="who">MIT core · self-hosted, no graph DB</div>
+          <p class="q"><b>Whose access outlived them, across systems, and which hurts most?</b></p>
+          <p>Collapses a person's accounts into one identity, runs 16 ghost-access rules over that join, and ranks findings by blast radius. Out of the box, no graph database, nothing to query.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABLE -->
+  <section>
+    <div class="wrap">
+      <h2 class="sec-head reveal">Feature by feature</h2>
+      <p class="lede reveal">Rows where each tool wins, including the ones Afterlife loses. If the differences that matter to you are in the top block, you probably want Prowler or Cartography, not this.</p>
+      <div class="cmp-wrap reveal">
+        <div class="cmp" role="table" aria-label="Afterlife, Prowler, and Cartography feature comparison">
+          <div class="h feat"><span class="plansub">Capability</span></div>
+          <div class="h af"><span class="plan">Afterlife</span><span class="plansub">MIT core</span></div>
+          <div class="h"><span class="plan">Prowler</span><span class="plansub">Apache-2.0</span></div>
+          <div class="h"><span class="plan">Cartography</span><span class="plansub">Apache-2.0</span></div>
+
+          <div class="feat">Cloud IAM and config data</div>
+          <div class="col af"><span class="yes">✓</span></div>
+          <div class="col"><span class="yes">✓</span></div>
+          <div class="col"><span class="yes">✓</span></div>
+
+          <div class="feat">CIS and compliance benchmarks <span class="q">(SOC 2, PCI, HIPAA)</span></div>
+          <div class="col af"><span class="par">~</span></div>
+          <div class="col"><span class="yes">✓</span></div>
+          <div class="col"><span class="no">–</span></div>
+
+          <div class="feat">Code hosts as a source <span class="q">(GitHub, GitLab)</span></div>
+          <div class="col af"><span class="yes">✓</span></div>
+          <div class="col"><span class="no">–</span></div>
+          <div class="col"><span class="par">~</span></div>
+
+          <div class="feat">IdP lifecycle as a source <span class="q">(Okta, Entra, Google)</span></div>
+          <div class="col af"><span class="yes">✓</span></div>
+          <div class="col"><span class="no">–</span></div>
+          <div class="col"><span class="par">~</span></div>
+
+          <div class="feat">Collapses a person's accounts into one identity</div>
+          <div class="col af"><span class="yes">✓</span></div>
+          <div class="col"><span class="no">–</span></div>
+          <div class="col"><span class="no">–</span></div>
+
+          <div class="feat">Offboarded-owner and ghost-access rules out of the box</div>
+          <div class="col af"><span class="yes">✓</span></div>
+          <div class="col"><span class="no">–</span></div>
+          <div class="col"><span class="no">–</span></div>
+
+          <div class="feat">Blast-radius ranking of findings</div>
+          <div class="col af"><span class="yes">✓</span></div>
+          <div class="col"><span class="no">–</span></div>
+          <div class="col"><span class="no">–</span></div>
+
+          <div class="feat">Ships analysis, or hands you data to query</div>
+          <div class="col af"><span class="val">analysis</span></div>
+          <div class="col"><span class="val">analysis</span></div>
+          <div class="col"><span class="val">data + Cypher</span></div>
+
+          <div class="feat">Requires a graph database to run</div>
+          <div class="col af"><span class="val">no, in-process</span></div>
+          <div class="col"><span class="val">no</span></div>
+          <div class="col"><span class="val">Neo4j</span></div>
+
+          <div class="feat">Self-hosted, no vendor backend</div>
+          <div class="col af"><span class="yes">✓</span></div>
+          <div class="col"><span class="yes">✓</span></div>
+          <div class="col"><span class="yes">✓</span></div>
+
+          <div class="feat">Project maturity and community size</div>
+          <div class="col af"><span class="val">early</span></div>
+          <div class="col"><span class="val">large</span></div>
+          <div class="col"><span class="val">large</span></div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><b class="yes">✓</b> full</span>
+        <span><b class="par">~</b> partial or with caveats</span>
+        <span><b class="no">–</b> not offered</span>
+      </div>
+      <p class="cmp-note">Compiled from each project's public documentation, checked September 2026. Cartography ingests GitHub and Okta, so it has the raw cross-source data; the difference is that turning it into "this live key's owner was deprovisioned" is Cypher you write, not a rule that ships. Something out of date or wrong? <a href="https://github.com/desledishant10/afterlife/issues">Open an issue</a> and I will fix it.</p>
+    </div>
+  </section>
+
+  <!-- WHEN TO USE EACH -->
+  <section>
+    <div class="wrap">
+      <h2 class="sec-head reveal">When to reach for each</h2>
+      <div class="thesis reveal">
+        <div class="tcard use">
+          <h3>Prowler or ScoutSuite</h3>
+          <div class="who">reach for it when</div>
+          <p>You need CIS or compliance-framework benchmarking, deep single-cloud config coverage, or an auditor-shaped posture report for one cloud. This is a lane Afterlife does not compete in.</p>
+        </div>
+        <div class="tcard use">
+          <h3>Cartography</h3>
+          <div class="who">reach for it when</div>
+          <p>You want the raw relationship graph to interrogate yourself, you are comfortable running Neo4j and writing Cypher, and you would rather have total flexibility than opinionated rules someone else wrote.</p>
+        </div>
+        <div class="tcard use me">
+          <h3>Afterlife</h3>
+          <div class="who">reach for it when</div>
+          <p>Your risk is standing access that outlived people across cloud, code, and IdP; you want the offboarded-owner join made and ranked for you; and you want it self-hosted with nothing to query or stand up.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BETTER TOGETHER -->
+  <section>
+    <div class="wrap">
+      <h2 class="sec-head reveal">They stack, they do not collide</h2>
+      <p class="lede reveal">This is not a "rip out your existing tools" pitch. Afterlife reads the same read-only APIs and answers a question the others leave on the table, so it layers on top of whatever you already run.</p>
+      <div class="together reveal">
+        <p>A realistic pipeline for a team that already has some of this:</p>
+        <ul class="steps">
+          <li><span class="n">01</span><span><b>Prowler</b> for CIS and compliance benchmarks on each cloud, on the schedule your auditor expects.</span></li>
+          <li><span class="n">02</span><span><b>Cartography</b> if you want a queryable inventory graph for ad-hoc investigation.</span></li>
+          <li><span class="n">03</span><span><b>Afterlife</b> for the cross-source ghost-access layer none of them rank for you: who is still live after they left, and which of those opens the most doors.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section>
+    <div class="wrap">
+      <h2 class="sec-head reveal">See it on your own graph</h2>
+      <p class="lede reveal">The whole detection engine is free forever under MIT. Point it at synthetic data first, then one read-only account.</p>
+      <div class="chips reveal" style="margin-top:20px">
+        <button class="copy" data-copy="pip install afterlife-audit" aria-label="Copy pip install command"><span class="prompt">$</span> pip install afterlife-audit <span class="ic"></span></button>
+      </div>
+      <div class="cta-row reveal">
+        <a class="btn btn-primary" href="./#quickstart">Run make demo</a>
+        <a class="btn btn-ghost" href="https://github.com/desledishant10/afterlife">View on GitHub</a>
+        <a class="btn btn-ghost" href="./">Back to overview</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="foot-left">
+      <a class="brand" href="./"><span class="glyph"></span>Afterlife</a>
+      <p class="foot-close">The credentials this tool finds <b>shouldn't still be alive.</b></p>
+    </div>
+    <div class="foot-meta">
+      <a href="https://github.com/desledishant10/afterlife">GitHub</a>
+      <span>pip install afterlife-audit</span>
+      <span>ghcr.io/desledishant10/afterlife</span>
+      <span>v0.3.2 · MIT</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  document.querySelectorAll('.copy').forEach(function(el){
+    el.addEventListener('click', function(){
+      var text = el.getAttribute('data-copy');
+      var done = function(){ el.classList.add('copied'); setTimeout(function(){ el.classList.remove('copied'); }, 1400); };
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done, done); }
+      else { try{ var t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); }catch(e){} done(); }
+    });
+  });
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var items = document.querySelectorAll('.reveal');
+  if(reduce || !('IntersectionObserver' in window)){ items.forEach(function(el){ el.classList.add('in'); }); }
+  else {
+    var io = new IntersectionObserver(function(entries){ entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } }); }, {rootMargin:'0px 0px -8% 0px', threshold:.08});
+    items.forEach(function(el){ io.observe(el); });
+  }
+})();
+</script>
+</body>
+</html>
