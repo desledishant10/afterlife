@@ -193,11 +193,13 @@
   .ed .fineactivate{font-family:var(--mono); font-size:.76rem; color:var(--muted); margin-top:12px; text-align:center}
 
   /* footer */
-  footer{border-top:1px solid var(--border); padding:60px 0 50px; background:var(--surface)}
-  .foot-grid{display:flex; flex-wrap:wrap; gap:24px; align-items:center; justify-content:space-between}
-  .foot-meta{font-family:var(--mono); font-size:.8rem; color:var(--muted); display:flex; flex-wrap:wrap; gap:16px}
-  .foot-close{font-family:var(--display); color:var(--muted); font-size:1.05rem; margin-top:26px; letter-spacing:-.01em}
+  footer{border-top:1px solid var(--border); padding:56px 0 50px; background:var(--surface)}
+  .foot-inner{display:flex; flex-wrap:wrap; gap:28px 48px; align-items:flex-start; justify-content:space-between}
+  .foot-close{font-family:var(--display); color:var(--muted); font-size:1.15rem; letter-spacing:-.01em; margin:14px 0 0; max-width:34ch}
   .foot-close b{color:var(--text); font-weight:500}
+  .foot-meta{font-family:var(--mono); font-size:.8rem; color:var(--muted); display:flex; flex-direction:column; gap:9px; text-align:right}
+  .foot-meta a{color:var(--accent)}
+  @media(max-width:640px){ .foot-meta{text-align:left} }
 
   /* reveal */
   .reveal{opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease}
@@ -587,18 +589,17 @@
 </main>
 
 <footer>
-  <div class="wrap">
-    <div class="foot-grid">
+  <div class="wrap foot-inner">
+    <div class="foot-left">
       <div class="brand"><span class="glyph"></span>Afterlife</div>
-      <div class="foot-meta">
-        <a href="https://github.com/desledishant10/afterlife">GitHub</a>
-        <span>ghcr.io/desledishant10/afterlife</span>
-        <span>v0.3.0</span>
-        <span>MIT</span>
-        <span class="mono">pip install afterlife-audit</span>
-      </div>
+      <p class="foot-close">The credentials this tool finds <b>shouldn't still be alive.</b></p>
     </div>
-    <p class="foot-close">The credentials this tool finds <b>shouldn't still be alive.</b></p>
+    <div class="foot-meta">
+      <a href="https://github.com/desledishant10/afterlife">GitHub</a>
+      <span>pip install afterlife-audit</span>
+      <span>ghcr.io/desledishant10/afterlife</span>
+      <span>v0.3.2 · MIT</span>
+    </div>
   </div>
 </footer>
 
