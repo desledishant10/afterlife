@@ -108,7 +108,7 @@ a GitHub outside collaborator whose person also holds active AWS keys.
 
 Afterlife cannot see that a push was approved under social-engineering pressure.
 But `ADMIN-WITHOUT-MFA` (and its non-admin sibling `USER-WITHOUT-MFA`, the
-Snowflake 2024 pattern) tells you which accounts do not have MFA enforced at
+[Snowflake 2024 pattern](snowflake-2024-ghost-access.md)) tells you which accounts do not have MFA enforced at
 all, and ranks the admins first. That is the prioritized list for rolling out
 phishing-resistant MFA: start with the identities whose compromise reaches the
 most systems, which is the same set `ADMIN-CONCENTRATION` surfaces. The two rules
