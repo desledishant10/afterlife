@@ -3,22 +3,28 @@
 > Strategy draft, 2026-09. A living document, not a contract: revisit each
 > section as real signal (stars, installs, sales conversations) comes in.
 >
-> **Reconciled 2026-09-02 to the shipped product (v0.3.0, 16 rules).** Facts,
-> version labels, and shipped-vs-roadmap status were corrected, and stray
-> monthly price figures were aligned to the single authoritative Pricing
-> section. Two changes are decisions for the founder, not edits, and are called
-> out where they land:
+> **Reconciled 2026-09-02, and the two open founder decisions resolved 2026-09-02.**
+> Facts, version labels, and shipped-vs-roadmap status were corrected, stray
+> monthly price figures were aligned to the Pricing section, and the two calls
+> flagged for the founder are now decided:
 >
-> 1. **The open-core line moved.** STALE-OAUTH, PRIVILEGE-DRIFT, and the
->    CloudTrail enrichment shipped in the *free* core, not as the Pro
->    "heavier-data" rules this plan reserved them as. That is faithful to the
->    "never paywall detection" principle, but it leaves Pro as dashboard auth +
->    SSO/OIDC + Jira (all shipped). Name the replacement Pro levers before the
->    pricing page goes live: retention/trend analytics, multi-project, and
->    PagerDuty/ServiceNow are the standing candidates.
-> 2. **Confirm the pricing regime.** The Pricing section is authoritative:
->    $990 founding / $1,900 list / $6,000+ Enterprise, flat per organization,
->    annual. Confirm that is current so the page and targets can be finalized.
+> 1. **The open-core line (decided).** STALE-OAUTH, PRIVILEGE-DRIFT, and the
+>    CloudTrail enrichment shipped in the *free* core, so Pro is not detection;
+>    Pro is the **proof and the shared workflow** around findings everyone gets
+>    free. The next Pro lever to build is a **signed, scheduled, tamper-evident
+>    audit-evidence pack** (the one Pro capability a buyer cannot rebuild in an
+>    afternoon), then priority support, then multi-project (only on proven paid
+>    pull). Retention/trend analytics is NOT a Pro lever: MTTR, burn-down, and
+>    the Trends page already ship free, so a retention paywall would be both
+>    unenforceable (history lives in the customer's own SQLite) and a violation
+>    of the never-paywall principle. See the reworked Pro roadmap below.
+> 2. **Pricing (decided).** Charge **$990/yr** now (founding, first 50 orgs,
+>    locked for life). Keep **$1,900** as the standing list shown struck-through,
+>    but do not charge it until the evidence pack ships (the old "SSO plus one
+>    advanced rule" trigger is moot: SSO shipped, the advanced rules shipped
+>    free). Raise the hand-quoted **Enterprise floor to $9,000** (was $6,000).
+>    Flat per-org annual shape unchanged; a Business/Multi band is held in
+>    reserve for if and when multi-project ships.
 
 **Product in one line.** Afterlife is the cross-source access review that your
 CSPM and your IdP each do half of: it joins cloud IAM keys, code-host access,
@@ -43,12 +49,12 @@ a single founder can run with minimal ops.
 - **The line:** you pay for team, scale, enterprise, and operational surface,
   never for detection quality or coverage. The core catches every ghost
   credential it can, free, forever.
-- **Price:** a single flat per-organization annual license. Launch at a
+- **Price:** a single flat per-organization annual license. Charge the
   **$990/year founding rate** (price locked for life, first 50 organizations)
-  while the Pro set is still landing; raise the list to **$1,900/year** once
-  SSO plus one advanced rule ship. A hand-quoted **Enterprise floor from
-  $6,000**, inbound only. Billing through a merchant of record so the only
-  recurring task is a one-command license mint.
+  now; raise the list to **$1,900/year** once the audit-evidence pack ships (the
+  first Pro capability a buyer cannot rebuild in an afternoon). A hand-quoted
+  **Enterprise floor from $9,000**, inbound only. Billing through a merchant of
+  record so the only recurring task is a one-command license mint.
 - **Launch move:** ship to PyPI, publish two breach-teardown posts, then a
   Show HN plus r/netsec plus security-newsletter push anchored on the
   offboarded-owner narrative. Convert stars to the first paying customer via
@@ -147,42 +153,42 @@ Put plainly: Pro makes Afterlife easier to run at team scale. It never makes the
 | Local read-only dashboard (all 8 pages) | Yes | Yes |
 | Dashboard authentication (`afterlife serve --require-auth`) | No | Yes (shipped) |
 | SSO / OIDC dashboard login | No | Yes (shipped) |
-| Long-horizon retention + trend analytics (MTTR, burn-down) | Current state + since-last-run delta | Extended retention windows + trend views (roadmap) |
+| Trend analytics: finding history, MTTR, per-source burn-down (Trends page) | Yes (free, ungated) | Yes |
+| Signed, scheduled, tamper-evident audit-evidence pack (attestable access review for SOC 2 / ISO) | No | Yes (roadmap, next Pro build) |
 | Ticketing / on-call integrations | No | Jira (shipped); PagerDuty, ServiceNow (roadmap) |
 | Multi-project / multi-config from one install | Single project | Yes (roadmap) |
 | Advanced rules (STALE-OAUTH, PRIVILEGE-DRIFT) | Yes (shipped free) | Yes |
 | Priority support (light SLA) | Community / issues | Yes |
 
-### Pro roadmap: what to build after dashboard auth
+### Pro roadmap: what to build next
 
-> **Status update (2026-09-02):** items 1 (SSO/OIDC) and 3 (Jira) have shipped
-> and are gated in `licensing.py`; item 5's advanced rules (STALE-OAUTH,
-> PRIVILEGE-DRIFT) shipped in the *free* core instead. The remaining live Pro
-> roadmap is retention/trend analytics, multi-project, and PagerDuty/ServiceNow.
-> The ranking below is kept as the original decision trail.
+Decided 2026-09-02. SSO/OIDC and Jira have shipped and are gated; the advanced
+rules (STALE-OAUTH, PRIVILEGE-DRIFT) and the Trends/MTTR/burn-down page shipped
+*free*, so neither detection nor trend analytics is a Pro lever. Pro today is
+auth + SSO + Jira, each of which a buyer can proxy away on a read-only,
+self-hosted tool (oauth2-proxy, Cloudflare Access, a free webhook). So the
+roadmap is ordered by the one test that matters now: what a buyer cannot rebuild
+in an afternoon, weighted hard against solo-founder ops.
 
-Ranked by willingness-to-pay against build effort, with the solo-founder constraints (minimal build, minimal ops, recurring revenue, no credential custody) as tie-breakers.
-
-| Pro candidate | Build effort | Willingness to pay | Ship order |
+| Pro candidate | Build effort | Willingness to pay | Order |
 |---|---|---|:---:|
-| SSO / OIDC dashboard login | Medium | High | 1 |
-| Retention + trend analytics | Low | Medium-High | 2 |
-| Jira / PagerDuty / ServiceNow (Jira first) | Low-Medium each | High | 3 |
-| Multi-project / multi-config | Medium-High | High (MSPs, multi-account) | 4 |
-| STALE-OAUTH, then PRIVILEGE-DRIFT | High | High (latent) | 5 |
-| Priority support (light SLA) | Near-zero to build | Medium | ships with first paying customer |
+| Audit-grade evidence pack (signed, scheduled, attestable) | Medium | High | 1 |
+| Priority support (light SLA) | Near-zero | Medium | now, from customer #1 |
+| Multi-project / multi-config | Medium-High | High (MSPs, multi-account) | 2, on proven paid pull |
+| PagerDuty, then ServiceNow | Low-Medium each | Low (free webhook replaces it) | reactive, per paid ask |
+| Shared remediation workflow (server-persisted acks) | High | High (switching cost) | deferred |
 
-**1. SSO / OIDC dashboard login.** Build this first because it completes the one Pro feature that already exists. Dashboard auth without SSO is only half of what a security team needs; SSO is the single most common hard gate on adopting any self-hosted tool inside a company (the well-known "SSO tax," catalogued at sso.tax). The OAuth machinery is not new territory here: the Google Workspace and Entra collectors already do OIDC-style client-credentials flows, so an Authlib-based login against the customer's own Okta / Google / Entra is medium effort, not a rewrite. Dashboard auth plus SSO together form the "team-ready" bundle that closes deals.
+**1. Audit-grade evidence pack. Build this first.** It is the only Pro capability a buyer cannot reproduce with a reverse proxy or a webhook. Reusing the existing Ed25519 signing, produce a signed, tamper-evident, scheduled attestation: who had live access to what on date X, which rules fired, who remediated what and by when, exportable in a form a SOC 2 / ISO auditor accepts as-is. It is *additive* (the signature and the schedule are something the free tier never had, not history withheld from it), it converts the audit buy-trigger, and it is what honestly justifies the $1,900 list. It stays read-only and stateless, so it adds near-zero ops. MTTR, burn-down, and the Trends page stay free forever; Pro is the signature and the schedule, never the data.
 
-**2. Retention + trend analytics.** The cheapest high-value thing on the list, because the lifecycle data is already persisted (each finding carries first-seen, last-seen, resolved-at, and the new / reopened / resolved delta). Free keeps the current open set plus the since-last-run delta, which is everything a working analyst needs. Pro adds long retention windows and the trend surface on top of that plumbing: findings over 90 / 180 / 365 days, mean-time-to-remediate, per-source burn-down, historical export. Compliance and audit buyers (SOC2, board reporting) pay for the evidence trail. Low build, real pull.
+**2. Priority support (light SLA). Turn it on now, from the first paying customer.** Near-zero to build, and a real part of what a four-figure buyer is paying for: someone answers when a rule misfires the week of their audit. Keep it bounded, 2-business-day email on redacted findings and logs only, never the customer's database or environment, so it never becomes on-call.
 
-**3. Ticketing / on-call integrations, Jira first.** These are the same shape as the existing `notify/` channels (Slack / webhook / email), so each is a self-contained connector, not a platform. Jira (most universal), then PagerDuty (Events API is trivial), then ServiceNow (Table API, slightly heavier). Ship and monetize after the first one lands rather than waiting for all three. High WTP because "we need it in our workflow" is the classic enterprise ask, and each connector is low-to-medium effort.
+**3. Multi-project / multi-config. Build only when 2+ paying prospects ask.** The one true scale and expansion lever (MSPs, security consultancies, multi-account platform teams), enforceable today as a boolean feature flag with no meter and no phone-home. It is also the biggest ops jump (DB scoping, project-aware `run` / `watch`), so gate it on demonstrated paid pull rather than building it speculatively.
 
-**4. Multi-project / multi-config.** Higher effort (DB scoping, dashboard routing, `run` / `watch` all need project awareness) for a narrower but well-paying audience: MSPs, security consultancies, and orgs juggling many AWS accounts or staging-vs-prod. This is the textbook "scale" feature and fits the Pro principle exactly. Build it when there is visible pull from that segment, not before.
+**4. PagerDuty, then ServiceNow. Reactive, per paid ask.** Same shape as the shipped Slack / webhook / Jira notifiers, token read from the environment, cheap to build. But the free webhook already replaces them, so they close specific "must be in our on-call" deals without creating willingness to pay. Build one when a paying customer needs it, not before.
 
-**5. Advanced rules: STALE-OAUTH, then PRIVILEGE-DRIFT.** Highest latent value, highest effort, so they anchor the back of the roadmap. Each needs a genuinely new data pipeline: STALE-OAUTH wants per-user OAuth grant enumeration (Google tokens endpoint, Slack `admin.users.list` with apps), PRIVILEGE-DRIFT wants CloudTrail or IAM Access Analyzer usage data, which is high-volume and the widest new IAM read scope. Do STALE-OAUTH first because its data source is lighter. This is the most delicate line to draw against "never cripple the core," so the framing must be explicit: these are Pro because they require heavier data collection, not because detection is being paywalled, and the 16 existing rules never move.
+**5. Shared remediation workflow. Deferred.** Server-persisted ack / assignee / status (replacing the local acknowledgements) is the deepest moat and highest switching cost, but it turns a stateless read-only auditor into a stateful app with a real support surface. Do not let it pull a solo founder into a second job before the evidence pack has proven paid pull.
 
-**Priority support** is not an engineering item and does not compete for the build sequence. Turn it on the day Pro has its first paying customer, bundled into the price as a light SLA (for example, 2-business-day email), kept deliberately low-touch so it never becomes an on-call obligation for a solo founder.
+**Do not** ship a standalone retention-window paywall. History lives in the customer's own SQLite, so it is unenforceable, and gating it reads as exactly the "cripple the free tier" move the public principle forbids. The audit value is the signature and the schedule, folded into item 1, never withheld data.
 
 ### No credential custody, by construction
 
@@ -209,8 +215,8 @@ Committed price points:
 | What | Price (USD/year) | Who it is for |
 |---|---|---|
 | **Founding license** | **$990**, locked for the life of the subscription, first 50 organizations | The price you actually charge at launch, while the Pro set is still landing |
-| **Afterlife Pro (list)** | **$1,900**, flat, per organization | The standing headline once SSO plus one advanced rule have shipped |
-| **Enterprise** | **from $6,000**, quoted per deal, inbound only | The org that needs a PO, an MSA, invoicing, and a security questionnaire answered |
+| **Afterlife Pro (list)** | **$1,900**, flat, per organization | The standing headline once the audit-evidence pack ships |
+| **Enterprise** | **from $9,000**, quoted per deal, inbound only | The org that needs a PO, an MSA, invoicing, and a security questionnaire answered |
 
 Everything below Enterprise is one line on the page: no per-seat math, no per-source meter, no usage band, no "contact sales."
 
@@ -240,7 +246,7 @@ The list number is grounded in real self-hosted, license-key comps for dev and s
 
 $1,900 lands deliberately between Sidekiq Pro and Sidekiq Enterprise. Security tooling supports higher willingness to pay than a background job queue, which argues up from Sidekiq Pro; Afterlife is early-stage and solo-maintained, with a small shipped Pro set (dashboard auth, SSO/OIDC, Jira), which argues against reaching for enterprise numbers. It clears the "is this serious" bar (a $99 tool reads as a hobby to a security team and earns no trust) and sits under the roughly $2,500 line where a purchase stops being a credit-card yes and starts triggering a PO, procurement, and a vendor questionnaire. Staying a card swipe is the entire point.
 
-The honest launch price is lower, because today Pro is dashboard authentication plus priority support and the rest (SSO/OIDC, STALE-OAUTH, PRIVILEGE-DRIFT, Jira/PagerDuty/ServiceNow, retention and trend history, multi-project) is roadmap. Selling $1,900 against dashboard auth alone would be selling a promise at full price. So the launch offer is a **founding license at $990/year, locked for life for the first 50 organizations.** $990 is a clean sub-$1,000 card purchase, it is a real reason to buy now, it rewards early buyers who are partly funding the roadmap, and it quietly validates $1,900 as the rate everyone else pays later. Raise the headline to $1,900 only after SSO/OIDC plus at least one of STALE-OAUTH or PRIVILEGE-DRIFT have shipped; founding customers keep $990 forever.
+The honest launch price is lower, because today Pro is team access (dashboard auth, SSO/OIDC) plus Jira ticketing and priority support, and each of those a buyer can proxy away on a read-only self-hosted tool. The un-proxyable Pro value, a signed and scheduled audit-evidence pack, is still roadmap (detection and the Trends / MTTR / burn-down page already ship free, so they are not Pro). Selling $1,900 against auth + SSO + Jira alone would be selling a thin tier at full price and inviting refunds. So the launch offer is a **founding license at $990/year, locked for life for the first 50 organizations.** $990 is a clean sub-$1,000 card purchase, a real reason to buy now, and it quietly validates $1,900 as the rate everyone else pays later. Raise the headline to $1,900 only after the audit-evidence pack ships; founding customers keep $990 forever.
 
 ### Why annual, and how billing stays near-zero-ops
 
@@ -252,7 +258,7 @@ At expiry the behavior is clean open core: Pro features lock (they refuse and po
 
 ### The Enterprise floor (upside without an ops treadmill)
 
-Keep one hand-quoted tier at **from $6,000/year, inbound only**, for the org that cannot buy on a card: PO or invoice instead of checkout, an MSA, and a vendor security questionnaire answered. It is not a second product to operate. No storefront listing, no standing SLA beyond best-effort priority, no shared Slack channel promised. It exists so a 1,000-person company does not bounce off a $1,900 self-serve page, and each deal is one manual `issue_license.py` run. Volume is low by construction, so manual is fine and it keeps procurement-heavy buyers off the storefront. $6,000 is accessible for a solo vendor and trivial against a single stale-credential breach of the Uber-2022 or Okta-2023 class the tool is built to catch; quote up from there per deal.
+Keep one hand-quoted tier at **from $9,000/year, inbound only**, for the org that cannot buy on a card: PO or invoice instead of checkout, an MSA, and a vendor security questionnaire answered. It is not a second product to operate. No storefront listing, no standing SLA beyond best-effort priority, no shared Slack channel promised. It exists so a 1,000-person company does not bounce off a $1,900 self-serve page, and each deal is one manual `issue_license.py` run. Volume is low by construction, so manual is fine and it keeps procurement-heavy buyers off the storefront. $9,000 is accessible for a solo vendor and trivial against a single stale-credential breach of the Uber-2022 or Okta-2023 class the tool is built to catch; quote up from there per deal ($9k to $15k is typical).
 
 ### Launch tactic
 
@@ -260,8 +266,9 @@ The founding license above is the launch tactic: **$990/year, price locked for t
 
 ### What to revisit or A/B later
 
-- **The step to the $1,900 headline.** Gate it on SSO/OIDC plus one advanced rule shipping. Until then $990 is not a discount, it is the honest price.
-- **A low entry tier.** A/B a single-team price near $490/year against the flat model, to see whether a cheaper on-ramp widens the funnel to solo and very small teams enough to justify a second SKU. Keep it only if the added conversions beat the added support surface.
+- **The step to the $1,900 headline.** Gate it on the audit-evidence pack shipping (the old SSO-plus-an-advanced-rule trigger is moot: SSO shipped, the advanced rules shipped free). Until then $990 is not a discount, it is the honest price.
+- **A Business/Multi band, held in reserve.** When multi-project actually ships and 2+ MSP or multi-account prospects ask with money, add a Business/Multi tier around $3,900 to $4,900, split purely on the scale axis via the existing features claim (no meter, no phone-home). Do not launch it before multi-project exists and there is demonstrated paid pull; a second SKU reintroduces the tier-dispute support the flat model was chosen to avoid.
+- **A low entry tier.** A/B a single-team price near $490/year against the flat model, to see whether a cheaper on-ramp widens the funnel to solo and very small teams enough to justify a second SKU. Considered and set aside for launch on anchoring and seriousness grounds (a sub-$500 tool reads as a hobby); revisit only if conversion data demands it.
 - **Scale-by-identity bands (Proposal 3).** Adopt only if flat pricing demonstrably leaves large-org money on the table, and only once you are willing to add the `max_identities` claim and the soft nudge banner. Nothing phones home, so this feedback comes slowly and mostly from Enterprise conversations, not telemetry.
 - **Perpetual fallback.** The issuer already supports `--days 0`. If a "what if I stop paying" objection recurs, add a JetBrains-style promise (keep the last version, lose only updates and new Pro features). Ship subscription first.
 - **A monthly try-before-annual price** at a deliberate premium (for example $199/month) for buyers who want to pilot before committing a year, accepting that it means shorter-lived keys to reissue.
