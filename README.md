@@ -272,15 +272,16 @@ the identity graph, blast scoring, monitoring with history, alerting, `run` /
 burn-down.
 
 **Pro** is not the finding, it is the team layer around it: shared, authenticated
-access and ticketing today, and a signed audit-evidence pack next. It is unlocked
-by an offline license key (a signed token verified locally against an embedded
-public key -- no license server, nothing phones home):
+access, ticketing, and signed audit-evidence packs. It is unlocked by an offline
+license key (a signed token verified locally against an embedded public key -- no
+license server, nothing phones home):
 
 | Pro feature | |
 |---|---|
 | Dashboard authentication | `afterlife serve --require-auth` password-protects the dashboard so you can safely expose it to a team |
 | Single sign-on (OIDC) | `afterlife serve --sso` puts the dashboard behind your identity provider (Google, Okta, Entra, Auth0, Keycloak) with an optional email/domain allow-list |
 | Ticketing integrations | Files a Jira issue for new and reopened findings on `afterlife analyze --notify`, turning ghost access into tracked work |
+| Audit-evidence packs | `afterlife evidence` writes a signed, tamper-evident attestation of your access review (open + resolved findings, MTTR, scan history) that a SOC 2 / ISO auditor accepts as-is. `afterlife verify-evidence` checks it, and is free so anyone can verify |
 
 **Get Pro** (from **$990/year**, founding rate, first 50 organizations, price
 locked for life): email

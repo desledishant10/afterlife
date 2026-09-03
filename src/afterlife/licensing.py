@@ -41,17 +41,20 @@ _REVOKED_JTIS: frozenset[str] = frozenset()
 #
 # The open-core line: Pro is team, scale, and operational surface, never
 # detection. All 16 rules, the identity graph, blast scoring, alerting, and the
-# trends view (MTTR, burn-down) stay free forever. The next Pro capability is a
-# signed, scheduled audit-evidence pack (add FEATURE_EVIDENCE_PACK here and gate
-# the signing/scheduling path on it); its paid value is the tamper-evident
-# signature and the schedule, never withheld history.
+# trends view (MTTR, burn-down) stay free forever. The signed audit-evidence
+# pack (FEATURE_EVIDENCE_PACK, afterlife evidence) is Pro because its value is
+# the tamper-evident signature and the schedule, never withheld data:
+# verification (afterlife verify-evidence) is free so any auditor can check a
+# pack without a license.
 FEATURE_DASHBOARD_AUTH = "dashboard_auth"
 FEATURE_INTEGRATIONS = "integrations"
 FEATURE_SSO = "sso"
+FEATURE_EVIDENCE_PACK = "evidence_pack"
 PRO_FEATURES: dict[str, str] = {
     FEATURE_DASHBOARD_AUTH: "Password-protect the web dashboard (afterlife serve --require-auth)",
     FEATURE_INTEGRATIONS: "Ticketing integrations: file a Jira issue for new findings",
     FEATURE_SSO: "Single sign-on (OIDC) for the dashboard (afterlife serve --sso)",
+    FEATURE_EVIDENCE_PACK: "Signed, tamper-evident audit-evidence packs (afterlife evidence)",
 }
 
 # "Get Pro" details shown to free users by `afterlife license` and in the README.
