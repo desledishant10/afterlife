@@ -46,3 +46,6 @@ afterlife-report.*
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+
+# Local Claude Code dev helpers (machine-specific paths)
+.claude/launch.json

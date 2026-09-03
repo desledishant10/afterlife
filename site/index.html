@@ -145,7 +145,8 @@
   .rule .rid{font-family:var(--mono); font-size:.85rem; color:var(--text); flex:0 0 auto}
   .rule .gloss{color:var(--muted); font-size:.9rem}
   .rule .bch{margin-left:auto}
-  @media(max-width:760px){ .rules{grid-template-columns:minmax(0,1fr)} }
+  .rule.filler{background:var(--surface); pointer-events:none} /* fills an odd grid slot so it doesn't show the container border color */
+  @media(max-width:760px){ .rules{grid-template-columns:minmax(0,1fr)} .rule.filler{display:none} }
 
   /* pipeline */
   .pipe-wrap{overflow-x:auto; margin-top:26px}
@@ -175,22 +176,41 @@
   .qcard .qlabel .num{color:var(--accent)}
   .qcard .qnote{color:var(--muted); font-size:.86rem; margin-top:12px; margin-bottom:0}
 
-  /* editions */
-  .ed-grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; margin-top:26px}
-  @media(max-width:820px){ .ed-grid{grid-template-columns:minmax(0,1fr)} }
-  .ed{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:26px}
-  .ed.pro{border-color:var(--border-strong); background:linear-gradient(180deg,var(--surface),var(--surface-2))}
-  .ed h3{font-size:1.15rem; display:flex; align-items:center; gap:10px}
-  .ed .price{font-family:var(--mono); font-size:.85rem; color:var(--accent); margin-top:4px}
-  .ed ul{list-style:none; padding:0; margin:18px 0 0}
-  .ed li{position:relative; padding:8px 0 8px 26px; color:var(--muted); font-size:.93rem; border-top:1px solid var(--border)}
-  .ed li:first-child{border-top:none}
-  .ed li::before{content:""; position:absolute; left:2px; top:14px; width:8px; height:8px; border-radius:50%}
-  .ed.free li::before{background:var(--ok)}
-  .ed.pro li::before{background:var(--accent)}
-  .ed .edcta{margin-top:22px}
-  .ed .edcta .btn{width:100%; justify-content:center}
-  .ed .fineactivate{font-family:var(--mono); font-size:.76rem; color:var(--muted); margin-top:12px; text-align:center}
+  /* editions — side-by-side comparison */
+  .cmp{display:grid; grid-template-columns:minmax(0,1fr) 118px 118px; gap:1px; background:var(--border); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-top:28px}
+  .cmp > div{background:var(--surface); padding:13px 18px; font-size:.93rem}
+  .cmp .feat{color:var(--text); align-self:center}
+  .cmp .feat .sub{display:block; color:var(--muted); font-size:.8rem; margin-top:3px}
+  .cmp .feat .mono{color:var(--text)}
+  .cmp .mark{display:flex; align-items:center; justify-content:center; font-size:1rem}
+  .cmp .yes{color:var(--accent); font-weight:600}
+  .cmp .no{color:var(--spectral); font-weight:500}
+  .cmp .pro{background:color-mix(in srgb, var(--accent) 6%, var(--surface))}
+  /* header row */
+  .cmp .h{padding-top:18px; padding-bottom:15px; text-align:center}
+  .cmp .h.feat{display:flex; align-items:flex-end; text-align:left; color:var(--muted); font-family:var(--mono); font-size:.74rem; letter-spacing:.04em}
+  .cmp .plan{display:block; font-family:var(--display); font-weight:700; font-size:1.04rem; color:var(--text); letter-spacing:-.01em; line-height:1.15}
+  .cmp .plansub{display:block; font-family:var(--mono); font-size:.73rem; color:var(--muted); margin-top:6px}
+  .cmp .h.pro{background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 15%, var(--surface)), color-mix(in srgb, var(--accent) 6%, var(--surface))); box-shadow:inset 0 3px 0 var(--accent)}
+  .cmp .h.pro .plansub{color:var(--text)}
+  .cmp .h.pro .was{color:var(--muted); text-decoration:line-through; text-decoration-thickness:1px}
+  .cmp .h.pro .amt{color:var(--accent)}
+  /* group divider row */
+  .cmp .grp{grid-column:1/-1; background:var(--surface-2); color:var(--muted); font-family:var(--mono); font-size:.73rem; letter-spacing:.05em; padding:9px 18px}
+  .cmp-cta{display:flex; flex-wrap:wrap; gap:12px; margin-top:24px}
+  .cmp-cta .btn{flex:1 1 220px; justify-content:center}
+  .cmp-fine{font-family:var(--mono); font-size:.78rem; line-height:1.7; color:var(--muted); margin-top:16px; max-width:70ch}
+  .cmp-fine a{color:var(--accent)}
+  @media(max-width:640px){
+    .cmp{grid-template-columns:minmax(0,1fr) 58px 58px}
+    .cmp > div{padding:11px 12px; font-size:.85rem}
+    .cmp .feat .sub{font-size:.72rem}
+    .cmp .plan{font-size:.9rem}
+    .cmp .plansub{font-size:.66rem}
+    .cmp .h.pro .was{display:none}
+    .cmp .grp{padding:8px 12px}
+    .cmp-cta .btn{flex-basis:100%}
+  }
 
   /* footer */
   footer{border-top:1px solid var(--border); padding:56px 0 50px; background:var(--surface)}
@@ -448,6 +468,7 @@
           <div class="rule"><span class="rid">PUBLIC-ROLE-TRUST</span><span class="gloss">IAM role assumable by any principal</span></div>
           <div class="rule"><span class="rid">ADMIN-CONCENTRATION</span><span class="gloss">One person holds admin in multiple systems</span></div>
           <div class="rule"><span class="rid">ADMIN-WITHOUT-MFA</span><span class="gloss">IdP admin without enforced two-step verification</span></div>
+          <div class="rule filler" aria-hidden="true"></div>
         </div>
       </div>
 
@@ -553,36 +574,68 @@
     <div class="wrap">
       <h2 class="sec-head reveal">Open core</h2>
       <p class="lede reveal">You pay for team, scale, and operational surface, never for detection. Every one of the 16 rules, the identity graph, blast-radius scoring, alerting, and the trends dashboard (with MTTR and burn-down) are free forever. Pro is not the finding, it is the team layer around it: shared authenticated access, ticketing, and signed, tamper-evident audit-evidence packs for your SOC 2 / ISO reviews.</p>
-      <div class="ed-grid">
-        <div class="ed free reveal">
-          <h3><span class="dot bg-low" style="background:var(--ok)"></span> Free forever</h3>
-          <ul>
-            <li>All 9 collectors (AWS, GCP, GitHub, GitLab, Google Workspace, Entra, Okta, Slack, Vault), plus the CloudTrail usage-enrichment pass</li>
-            <li>Cross-source identity graph (email and Vault-alias linking)</li>
-            <li>All 16 detection rules, ranked by blast radius with explainable factors</li>
-            <li>Monitoring with finding history: new, reopened, and resolved across runs</li>
-            <li>Alerting to Slack, generic webhook, and email (SMTP)</li>
-            <li>run and watch continuous mode, plus the Docker image on GHCR</li>
-            <li>Reports in JSON, HTML, SARIF, and PDF</li>
-            <li>Local read-only dashboard, allowlist and suppression</li>
-          </ul>
+      <div class="cmp reveal" role="table" aria-label="Free and Pro edition comparison">
+        <div class="h feat">What you get</div>
+        <div class="h">
+          <span class="plan">Free forever</span>
+          <span class="plansub">MIT · self-hosted</span>
         </div>
-        <div class="ed pro reveal">
-          <h3><span class="dot" style="background:var(--accent)"></span> Pro</h3>
-          <div class="price"><span style="color:var(--muted); text-decoration:line-through; text-decoration-thickness:1px">$1,900/yr</span> &nbsp;<span style="color:var(--accent)">$990/yr</span> <span style="color:var(--muted)">founding rate, locked for life, first 50 organizations</span></div>
-          <ul>
-            <li>Dashboard authentication (<span class="mono">afterlife serve --require-auth</span>) so you can safely expose it to a team</li>
-            <li>Single sign-on via OIDC, behind your own IdP (Google, Okta, Entra, Auth0, Keycloak)</li>
-            <li>Jira ticketing: files a remediation issue per new or reopened finding</li>
-            <li>Signed, tamper-evident audit-evidence packs (<span class="mono">afterlife evidence</span>): an attestable access review your SOC 2 / ISO auditor accepts as-is, with free offline verification</li>
-            <li>Unlocked by an offline Ed25519-signed license, verified locally against an embedded public key: no license server, nothing phones home</li>
-          </ul>
-          <div class="edcta">
-            <a class="btn btn-primary" href="https://buy.polar.sh/polar_cl_qvXw4txhqGaPXKuepbXsgfjVnlbpzp0Wbxnm730BFMK">Get Afterlife Pro</a>
-          </div>
-          <p class="fineactivate">Secure checkout via Polar. Prefer to talk first? <a href="mailto:didesle7@gmail.com?subject=Afterlife%20Pro%20license&body=Organization%20name%3A%0AHow%20you%20use%20Afterlife%3A">Email us</a>. Activate with AFTERLIFE_LICENSE, verified locally.</p>
+        <div class="h pro">
+          <span class="plan">Pro</span>
+          <span class="plansub"><span class="was">$1,900</span> <span class="amt">$990</span>/yr</span>
         </div>
+
+        <div class="grp">Detection &amp; data</div>
+        <div class="feat">All 9 collectors, plus the CloudTrail usage pass<span class="sub">AWS, GCP, GitHub, GitLab, Google, Entra, Okta, Slack, Vault</span></div>
+        <div class="mark"><span class="yes">✓</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat">Cross-source identity graph<span class="sub">linked by lowercased email and Vault alias</span></div>
+        <div class="mark"><span class="yes">✓</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat">All 16 detection rules, blast-radius ranked</div>
+        <div class="mark"><span class="yes">✓</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat">Explainable scoring factors</div>
+        <div class="mark"><span class="yes">✓</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+
+        <div class="grp">Monitoring, alerts &amp; reports</div>
+        <div class="feat">Finding history: new, reopened, resolved</div>
+        <div class="mark"><span class="yes">✓</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat">Alerts to Slack, webhook, and email</div>
+        <div class="mark"><span class="yes">✓</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat">Reports in JSON, HTML, SARIF, and PDF</div>
+        <div class="mark"><span class="yes">✓</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat"><span class="mono">run</span> / <span class="mono">watch</span> continuous mode, Docker image</div>
+        <div class="mark"><span class="yes">✓</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat">Local read-only dashboard</div>
+        <div class="mark"><span class="yes">✓</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+
+        <div class="grp">Team &amp; compliance</div>
+        <div class="feat">Dashboard authentication<span class="sub"><span class="mono">serve --require-auth</span>, safe to expose to a team</span></div>
+        <div class="mark"><span class="no">–</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat">Single sign-on via OIDC<span class="sub">Google, Okta, Entra, Auth0, Keycloak</span></div>
+        <div class="mark"><span class="no">–</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat">Jira ticketing<span class="sub">files a remediation issue per new finding</span></div>
+        <div class="mark"><span class="no">–</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
+        <div class="feat">Signed audit-evidence packs<span class="sub">SOC 2 / ISO ready · free for anyone to verify</span></div>
+        <div class="mark"><span class="no">–</span></div>
+        <div class="mark pro"><span class="yes">✓</span></div>
       </div>
+
+      <div class="cmp-cta reveal">
+        <a class="btn btn-ghost" href="https://github.com/desledishant10/afterlife">Start free on GitHub</a>
+        <a class="btn btn-primary" href="https://buy.polar.sh/polar_cl_qvXw4txhqGaPXKuepbXsgfjVnlbpzp0Wbxnm730BFMK">Get Afterlife Pro</a>
+      </div>
+      <p class="cmp-fine reveal">Founding rate: $990/yr, locked for life, first 50 organizations. Secure checkout via Polar. Prefer to talk first? <a href="mailto:didesle7@gmail.com?subject=Afterlife%20Pro%20license&body=Organization%20name%3A%0AHow%20you%20use%20Afterlife%3A">Email us</a>. Pro is unlocked by an offline Ed25519-signed license, verified locally against an embedded public key: no license server, nothing phones home.</p>
     </div>
   </section>
 
