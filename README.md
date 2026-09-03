@@ -345,6 +345,7 @@ docs/              ARCHITECTURE.md, DETECTIONS.md, INTERVIEW_TALK_TRACK.md
 - [docs/blog/the-graph-layer.md](docs/blog/the-graph-layer.md): design essay on why a graph is the right shape for cross-source ghost-access detection
 - [docs/INTERVIEW_TALK_TRACK.md](docs/INTERVIEW_TALK_TRACK.md): prepared narratives for portfolio conversations
 - [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md): backing up and rotating the license-signing key (maintainers)
+- [docs/SELLING.md](docs/SELLING.md): selling and fulfillment runbook, the TEST100 dry run, and the customer ledger (maintainers)
 - [CHANGELOG.md](CHANGELOG.md): full release + milestone history
 
 ## Why "Afterlife"

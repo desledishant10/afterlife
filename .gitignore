@@ -28,6 +28,9 @@ reports/
 # License-signing secrets: the vendor's private key must never be committed.
 .secrets/
 *.pem
+
+# Customer ledger (issued licenses, emails, jtis): PII, keep local only.
+customers.csv
 afterlife.yml
 
 # Ad-hoc report artifacts users generate while exploring
